@@ -479,7 +479,7 @@ const server = http.createServer(async (req, res) => {
   if (method === "POST" && parsed.pathname === "/api/chat/send") {
     try {
       const body = await parseBody(req);
-      const msg = Chat.send({ from: body.from, to: body.to, text: body.text, channel: body.channel, whatsapp: body.whatsapp });
+      const msg = Chat.send({ from: body.from, to: body.to, text: body.text, channel: body.channel, whatsapp: body.whatsapp, audioUrl: body.audioUrl });
       return json(res, 200, msg);
     } catch (e) {
       if (e && e.code && (e.code === "sender_blocked" || e.code === "sender_muted")) {
@@ -495,6 +495,34 @@ const server = http.createServer(async (req, res) => {
     if (!userA || !userB) return json(res, 400, { error: "userA and userB required" });
     const items = Chat.thread({ userA, userB, limit });
     return json(res, 200, { items });
+  }
+  if (method === "POST" && parsed.pathname === "/api/chat/upload-voice") {
+    try {
+      const body = await parseBody(req);
+      const dataUrl = String(body.dataUrl || "");
+      if (!dataUrl.startsWith("data:audio/")) return json(res, 400, { error: "dataUrl required (audio)" });
+      const [meta, b64] = dataUrl.split(",");
+      const ext = meta.includes("webm") ? "webm" : "ogg";
+      const buf = Buffer.from(b64, "base64");
+      const dir = path.join(__dirname, "uploads");
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+      const filename = `voice_${Date.now()}.${ext}`;
+      fs.writeFileSync(path.join(dir, filename), buf);
+      return json(res, 200, { url: `/uploads/${filename}` });
+    } catch (e) {
+      return json(res, 400, { error: e.message || "upload failed" });
+    }
+  }
+  if (method === "GET" && parsed.pathname.startsWith("/uploads/")) {
+    const filePath = path.join(__dirname, parsed.pathname);
+    if (!fs.existsSync(filePath)) return json(res, 404, { error: "Not found" });
+    const stream = fs.createReadStream(filePath);
+    stream.on("open", () => {
+      res.writeHead(200, { "Content-Type": "application/octet-stream" });
+      stream.pipe(res);
+    });
+    stream.on("error", () => json(res, 500, { error: "read error" }));
+    return;
   }
   json(res, 404, { error: "Not found" });
 });

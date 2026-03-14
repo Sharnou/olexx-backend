@@ -29,7 +29,7 @@ Lightweight classifieds backend with in-memory search, optional Elasticsearch/Ra
 ## Handy API snippets (PowerShell)
 - Admin check: `Invoke-RestMethod -Headers @{'x-admin-email'='Ahmed_sharnou@yahoo.com'} -Uri "http://localhost:4000/api/admin/me"`
 - Mute/block seller (POST): `/api/admin/mute` or `/api/admin/block` with JSON `{ sellerId, value }` and `x-admin-email` header.
-- Chat send/thread: `/api/chat/send` (POST `{from?, whatsapp?, to, text?, channel: "text"|"voice"|"whatsapp_voice"}`) and `/api/chat/thread?userA=&userB=&limit=`.
+- Chat send/thread: `/api/chat/send` (POST `{from?, whatsapp?, to, text?, audioUrl?, channel: "text"|"voice"|"whatsapp_voice"}`) and `/api/chat/thread?userA=&userB=&limit=`.
 - Search: `/api/search` POST `{ text, l1, l2?, country?, city?, page, pageSize }`.
 
 ## Persisting the in-memory index
@@ -37,7 +37,7 @@ Lightweight classifieds backend with in-memory search, optional Elasticsearch/Ra
 - Run `npm test` once to seed sample docs, then stop the process to persist.
 
 ## UI demos
-- `public/index.html` — marketplace UI (country-aware search, sell form, chat, admin actions).
+- `public/index.html` — marketplace UI (country-aware search, sell form, chat, admin actions, browser voice record upload to /api/chat/upload-voice).
 - `public/admin.html` — admin console (health, mute/block, audit).
 - Minimal fetch snippet:
 ```html
@@ -59,6 +59,7 @@ runSearch();
 - `USE_ES`, `ES_HOST`, `ES_INDEX`
 - `USE_RABBIT`, `RABBIT_URL`
 - `USE_AWS_PRESIGN`, `AWS_REGION`, `S3_BUCKET`, `S3_UPLOAD_BASE`, `S3_CDN_BASE`
+- `WHATSAPP_TOKEN`, `WHATSAPP_NUMBER_ID` (for WhatsApp Business API send)
 
 ## Notes
 - For production, add structured logging and metrics.

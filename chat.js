@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const Profiles = require("./profiles");
 const Notifications = require("./notifications");
+const Whatsapp = require("./whatsapp");
 const file = path.join(__dirname, "data-chat.json");
 
 let messages = [];
@@ -57,6 +58,9 @@ function notifyRecipient(recipientId, msg) {
   // If profile has whatsapp and channel implies WhatsApp, flag a WhatsApp notification (number not exposed)
   if (profile.whatsapp && (msg.channel === "whatsapp_voice" || msg.fromWhatsapp)) {
     Notifications.push(recipientId, { type: "whatsapp_alert", masked: "***", at: msg.at });
+    // attempt to deliver via WhatsApp Business API if configured
+    const text = msg.text || "You have a new OLEXX chat message";
+    Whatsapp.sendWhatsapp(profile.whatsapp, text);
   }
 }
 

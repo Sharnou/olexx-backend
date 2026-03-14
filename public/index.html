@@ -189,35 +189,37 @@
         </div>
         <pre id="admin-out" style="margin-top:10px;"></pre>
       </div>
-      <div class="card">
-        <div class="section-title">Chat</div>
-        <div class="two-col">
-          <div>
-            <label>From</label>
-            <input id="chat-from" placeholder="userA" />
-          </div>
-          <div>
-            <label>To</label>
-            <input id="chat-to" placeholder="userB" />
-          </div>
+    <div class="card">
+      <div class="section-title">Chat</div>
+      <div class="two-col">
+        <div>
+          <label>From</label>
+          <input id="chat-from" placeholder="userA" />
         </div>
-        <label>WhatsApp number (optional)</label>
-        <input id="chat-wa" placeholder="+20123456789" />
-        <label>Channel</label>
-        <select id="chat-channel">
-          <option value="text">Text</option>
-          <option value="voice">Voice (recording)</option>
-          <option value="whatsapp_voice">WhatsApp voice call</option>
-        </select>
-        <label>Message (or leave blank if sending voice)</label>
-        <input id="chat-text" placeholder="Hi there" />
-        <label>Voice URL (for voice channel)</label>
-        <input id="chat-audio" placeholder="https://example.com/voice.ogg" />
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
-          <button class="btn" onclick="chatSend()">Send</button>
-          <button class="btn btn-secondary" onclick="chatThread()">Load Thread</button>
+        <div>
+          <label>To</label>
+          <input id="chat-to" placeholder="userB" />
         </div>
-        <div id="chat-links" class="muted" style="margin-top:6px;"></div>
+      </div>
+      <label>WhatsApp number (optional)</label>
+      <input id="chat-wa" placeholder="+20123456789" />
+      <label>Channel</label>
+      <select id="chat-channel">
+        <option value="text">Text</option>
+        <option value="voice">Voice (recording)</option>
+        <option value="whatsapp_voice">WhatsApp voice call</option>
+      </select>
+      <label>Message (or leave blank if sending voice)</label>
+      <input id="chat-text" placeholder="Hi there" />
+      <label>Voice URL (for voice channel)</label>
+      <input id="chat-audio" placeholder="https://example.com/voice.ogg" />
+      <button class="btn btn-secondary" style="margin-top:6px;" onclick="recordVoice()">Record (browser mic)</button>
+      <div id="record-status" class="muted"></div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+        <button class="btn" onclick="chatSend()">Send</button>
+        <button class="btn btn-secondary" onclick="chatThread()">Load Thread</button>
+      </div>
+      <div id="chat-links" class="muted" style="margin-top:6px;"></div>
         <pre id="chat-out" style="margin-top:10px;"></pre>
       </div>
     </section>
@@ -363,6 +365,44 @@
       }
       if (channel === "voice") links.push("Voice channel: start mic in app (placeholder UI).");
       document.getElementById("chat-links").innerHTML = links.join(" · ") || "";
+    }
+
+    // rudimentary voice recorder using MediaRecorder; uploads to /api/chat/upload-voice
+    let mediaRecorder = null;
+    let chunks = [];
+    async function recordVoice() {
+      if (!mediaRecorder) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+        mediaRecorder.onstop = async () => {
+          const blob = new Blob(chunks, { type: "audio/webm" });
+          chunks = [];
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            const dataUrl = reader.result;
+            document.getElementById("record-status").textContent = "Uploading...";
+            const res = await fetch("/api/chat/upload-voice", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ dataUrl }),
+            });
+            const data = await res.json();
+            if (data.url) {
+              document.getElementById("chat-audio").value = data.url;
+              document.getElementById("record-status").textContent = "Uploaded.";
+            } else {
+              document.getElementById("record-status").textContent = "Upload failed.";
+            }
+          };
+          reader.readAsDataURL(blob);
+        };
+        mediaRecorder.start();
+        document.getElementById("record-status").textContent = "Recording... click again to stop.";
+      } else {
+        mediaRecorder.stop();
+        mediaRecorder = null;
+      }
     }
   </script>
 </body>
