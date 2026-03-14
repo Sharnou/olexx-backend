@@ -3,7 +3,7 @@ const url = require("url");
 const { runAiClassifier } = require("./classifier");
 const { TAXONOMY } = require("./taxonomy");
 const { visibilityFromRating } = require("./ranking");
-const { SUPER_ADMIN_EMAIL, DEV_MODE, USE_ES, USE_RABBIT, S3_UPLOAD_BASE, S3_CDN_BASE, USE_AWS_PRESIGN } = require("./config");
+const { SUPER_ADMIN_EMAIL, DEV_MODE, USE_ES, USE_RABBIT, S3_UPLOAD_BASE, S3_CDN_BASE, USE_AWS_PRESIGN, AWS_REGION, S3_BUCKET } = require("./config");
 const SearchAdapter = USE_ES ? require("./elasticsearch") : require("./search");
 const InMemory = require("./search");
 const Profiles = require("./profiles");
@@ -18,7 +18,6 @@ const Auth = require("./auth");
 const Saved = require("./saved");
 const Notes = require("./notifications");
 const AI = require("./ai");
-const { S3_UPLOAD_BASE, AWS_REGION, S3_BUCKET } = require("./config");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 
 function json(res, code, data) {
