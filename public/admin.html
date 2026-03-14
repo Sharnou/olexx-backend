@@ -61,6 +61,11 @@
       <button class="btn" style="margin-top:10px;" onclick="audit()">Fetch audit</button>
       <pre id="audit-out"></pre>
     </div>
+    <div class="card">
+      <div style="font-weight:800;">Moderation queue</div>
+      <button class="btn" onclick="loadQueue()">Load pending</button>
+      <pre id="mod-out"></pre>
+    </div>
   </div>
 
   <script>
@@ -112,6 +117,21 @@
       const res = await fetch(`/api/admin/audit?${qs.toString()}`, { headers: adminHeaders() });
       const data = await res.json();
       document.getElementById("audit-out").textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function loadQueue() {
+      const res = await fetch("/api/admin/moderation?status=pending", { headers: adminHeaders() });
+      const data = await res.json();
+      document.getElementById("mod-out").textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function resolveMod(id, status) {
+      await fetch("/api/admin/moderation/resolve", {
+        method: "POST",
+        headers: Object.assign({ "Content-Type": "application/json" }, adminHeaders()),
+        body: JSON.stringify({ id, status }),
+      });
+      loadQueue();
     }
   </script>
 </body>

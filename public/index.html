@@ -48,6 +48,12 @@
   </header>
 
   <div class="container">
+    <div id="trans-banner" class="card" style="display:none; border:1px dashed #cbd5e1;">
+      <div class="section-title">Translate to your language?</div>
+      <p class="muted" id="trans-msg"></p>
+      <button class="btn" onclick="translatePage()">Translate page (beta)</button>
+    </div>
+
     <section id="auth" class="card">
       <div class="section-title">Login / Register (Email or Mobile OTP)</div>
       <div class="two-col">
@@ -556,6 +562,37 @@
       const t = authToken();
       if (t) return Object.assign({}, base, { Authorization: `Bearer ${t}` });
       return base;
+    }
+
+    const siteLang = document.documentElement.lang || "en";
+    const userLang = (navigator.language || "en").split("-")[0];
+
+    (function setupTranslationPrompt() {
+      if (userLang && userLang !== siteLang) {
+        const banner = document.getElementById("trans-banner");
+        const msg = document.getElementById("trans-msg");
+        banner.style.display = "block";
+        msg.textContent = `Detected ${userLang}. Translate this page?`;
+      }
+    })();
+
+    async function translatePage() {
+      const text = document.querySelector(".hero")?.innerText || document.body.innerText.slice(0, 3000);
+      const res = await fetch("/api/ai/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, to: userLang }),
+      });
+      const data = await res.json();
+      if (data.text) {
+        const hero = document.querySelector(".hero");
+        if (hero) {
+          hero.querySelector("h1").innerText = data.text;
+        }
+        document.getElementById("trans-msg").textContent = "Translated via AI.";
+      } else {
+        document.getElementById("trans-msg").textContent = "Translation unavailable.";
+      }
     }
   </script>
 </body>
