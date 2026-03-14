@@ -1,75 +1,118 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>OLEXX Admin</title>
+  <title>OLEXX Admin Console</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: system-ui, Arial; margin: 20px; }
-    input, button { margin: 4px 0; padding: 8px; width: 100%; max-width: 520px; }
-    .row { max-width: 540px; margin-bottom: 16px; }
-    pre { background: #f6f8fa; padding: 10px; border-radius: 6px; overflow: auto; }
+    body { margin:0; font-family: "Segoe UI", Arial, sans-serif; background:#f8fafc; color:#0f172a; }
+    header { background:#0f172a; color:#fff; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; }
+    .btn { background:#fbbf24; color:#1f2937; border:none; padding:10px 14px; border-radius:8px; font-weight:700; cursor:pointer; }
+    .btn-secondary { background:#fff; color:#0f172a; border:1px solid #e2e8f0; }
+    .container { max-width:960px; margin:0 auto; padding:24px; display:grid; gap:16px; }
+    .card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:16px; box-shadow:0 6px 20px rgba(15,23,42,0.06); }
+    label { font-size:13px; color:#64748b; display:block; margin-top:10px; }
+    input, select { width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:10px; font-size:14px; }
+    pre { background:#0f172a; color:#e2e8f0; padding:12px; border-radius:10px; overflow:auto; font-size:13px; }
+    .two { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
   </style>
-  <script src="/client-api.js"></script>
+</head>
+<body>
+  <header>
+    <div style="font-weight:800;font-size:18px;">OLEXX Admin</div>
+    <a href="/" style="color:#fff; text-decoration:none;">← Back to site</a>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <div style="font-weight:800;">Health</div>
+      <button class="btn" onclick="health()">Check health</button>
+      <pre id="health-out"></pre>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:800;">Admin identity</div>
+      <label>Admin email (SUPER_ADMIN_EMAIL)</label>
+      <input id="admin-email" value="Ahmed_sharnou@yahoo.com" />
+      <button class="btn" style="margin-top:12px;" onclick="whoami()">Who am I?</button>
+      <pre id="me-out"></pre>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:800;">Seller controls</div>
+      <label>Seller ID</label>
+      <input id="seller-id" placeholder="seller-123" />
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+        <button class="btn" onclick="mute(true)">Mute</button>
+        <button class="btn btn-secondary" onclick="mute(false)">Unmute</button>
+        <button class="btn" onclick="block(true)">Block</button>
+        <button class="btn btn-secondary" onclick="block(false)">Unblock</button>
+        <button class="btn" onclick="statusSeller()">Status</button>
+      </div>
+      <pre id="seller-out"></pre>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:800;">Audit log</div>
+      <label>Seller filter (optional)</label>
+      <input id="audit-seller" placeholder="seller-123" />
+      <label>Limit</label>
+      <input id="audit-limit" type="number" value="20" min="1" max="200" />
+      <button class="btn" style="margin-top:10px;" onclick="audit()">Fetch audit</button>
+      <pre id="audit-out"></pre>
+    </div>
+  </div>
+
   <script>
-    let api;
-    function setEmail() {
-      const email = document.getElementById("adminEmail").value.trim();
-      api = new OlexxClient(location.origin, email);
-      document.getElementById("meOut").textContent = "Admin context set for: " + email;
+    async function health() {
+      const res = await fetch("/health");
+      const data = await res.json();
+      document.getElementById("health-out").textContent = JSON.stringify(data, null, 2);
     }
-    async function me() {
-      const out = await api.adminMe();
-      document.getElementById("meOut").textContent = JSON.stringify(out, null, 2);
+    function adminHeaders() {
+      return { "x-admin-email": document.getElementById("admin-email").value.trim() };
     }
-    async function status() {
-      const sellerId = document.getElementById("sellerId").value.trim();
-      const out = await api.adminStatus(sellerId);
-      document.getElementById("statusOut").textContent = JSON.stringify(out, null, 2);
+    async function whoami() {
+      const res = await fetch("/api/admin/me", { headers: adminHeaders() });
+      const data = await res.json();
+      document.getElementById("me-out").textContent = JSON.stringify(data, null, 2);
+    }
+    async function statusSeller() {
+      const sellerId = document.getElementById("seller-id").value.trim();
+      const res = await fetch(`/api/admin/status?sellerId=${encodeURIComponent(sellerId)}`, { headers: adminHeaders() });
+      const data = await res.json();
+      document.getElementById("seller-out").textContent = JSON.stringify(data, null, 2);
     }
     async function mute(val) {
-      const sellerId = document.getElementById("sellerId").value.trim();
-      const out = await api.adminMute(sellerId, val);
-      document.getElementById("statusOut").textContent = JSON.stringify(out, null, 2);
+      const sellerId = document.getElementById("seller-id").value.trim();
+      const res = await fetch("/api/admin/mute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...adminHeaders() },
+        body: JSON.stringify({ sellerId, value: val }),
+      });
+      const data = await res.json();
+      document.getElementById("seller-out").textContent = JSON.stringify(data, null, 2);
     }
     async function block(val) {
-      const sellerId = document.getElementById("sellerId").value.trim();
-      const out = await api.adminBlock(sellerId, val);
-      document.getElementById("statusOut").textContent = JSON.stringify(out, null, 2);
+      const sellerId = document.getElementById("seller-id").value.trim();
+      const res = await fetch("/api/admin/block", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...adminHeaders() },
+        body: JSON.stringify({ sellerId, value: val }),
+      });
+      const data = await res.json();
+      document.getElementById("seller-out").textContent = JSON.stringify(data, null, 2);
     }
     async function audit() {
-      const sellerId = document.getElementById("sellerId").value.trim();
-      const out = await api.adminAudit(sellerId, 100);
-      document.getElementById("auditOut").textContent = JSON.stringify(out, null, 2);
+      const sellerId = document.getElementById("audit-seller").value.trim();
+      const limit = Number(document.getElementById("audit-limit").value) || 20;
+      const qs = new URLSearchParams();
+      if (sellerId) qs.set("sellerId", sellerId);
+      qs.set("limit", limit);
+      const res = await fetch(`/api/admin/audit?${qs.toString()}`, { headers: adminHeaders() });
+      const data = await res.json();
+      document.getElementById("audit-out").textContent = JSON.stringify(data, null, 2);
     }
-    window.addEventListener("DOMContentLoaded", () => {
-      api = new OlexxClient(location.origin, "ahmed_sharnou@yahoo.com");
-    });
   </script>
-  </head>
-<body>
-  <h1>OLEXX Admin</h1>
-  <div class="row">
-    <h3>Admin Context</h3>
-    <input id="adminEmail" value="ahmed_sharnou@yahoo.com" />
-    <button onclick="setEmail()">Use Email</button>
-    <button onclick="me()">Check Admin</button>
-    <pre id="meOut"></pre>
-  </div>
-  <div class="row">
-    <h3>Seller Moderation</h3>
-    <input id="sellerId" placeholder="seller id" />
-    <button onclick="status()">Status</button>
-    <button onclick="mute(true)">Mute</button>
-    <button onclick="mute(false)">Unmute</button>
-    <button onclick="block(true)">Block</button>
-    <button onclick="block(false)">Unblock</button>
-    <pre id="statusOut"></pre>
-  </div>
-  <div class="row">
-    <h3>Audit Log</h3>
-    <button onclick="audit()">Load Audit</button>
-    <pre id="auditOut"></pre>
-  </div>
 </body>
 </html>

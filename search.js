@@ -57,6 +57,8 @@ function docTokens(doc) {
   const parts = [doc.title || "", doc.description || ""];
   if (doc.category && doc.category.l1) parts.push(doc.category.l1);
   if (doc.category && doc.category.l2) parts.push(doc.category.l2);
+  if (doc.country) parts.push(doc.country);
+  if (doc.city) parts.push(doc.city);
   if (doc.attributes) {
     for (const [k, v] of Object.entries(doc.attributes)) {
       parts.push(k);
@@ -236,6 +238,8 @@ function indexDoc(doc) {
     seller: doc.seller || {},
     images: Array.isArray(doc.images) ? doc.images : [],
     location: doc.location || null,
+    country: doc.country || null,
+    city: doc.city || null,
     createdAt,
     price: doc.price !== undefined ? Number(doc.price) : undefined,
     _tokens: tokens,
@@ -308,6 +312,20 @@ function search(body) {
   }
   if (!candidates) {
     candidates = new Set(store.keys());
+  }
+  if (q.country) {
+    const wanted = String(q.country).toLowerCase();
+    candidates = new Set([...candidates].filter((id) => {
+      const d = store.get(id);
+      return d && d.country && String(d.country).toLowerCase() === wanted;
+    }));
+  }
+  if (q.city) {
+    const wanted = String(q.city).toLowerCase();
+    candidates = new Set([...candidates].filter((id) => {
+      const d = store.get(id);
+      return d && d.city && String(d.city).toLowerCase() === wanted;
+    }));
   }
   if (q.filters) {
     for (const [k, v] of Object.entries(q.filters)) {
