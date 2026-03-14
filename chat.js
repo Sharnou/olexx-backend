@@ -3,6 +3,7 @@ const path = require("path");
 const Profiles = require("./profiles");
 const Notifications = require("./notifications");
 const Whatsapp = require("./whatsapp");
+const Moderation = require("./moderation");
 const file = path.join(__dirname, "data-chat.json");
 
 let messages = [];
@@ -25,6 +26,16 @@ function send({ from, to, text, channel = "text", whatsapp, audioUrl }) {
   if (mode === "text" && !text) throw new Error("text required");
   if (mode === "voice" && !audioUrl) throw new Error("audioUrl required for voice");
   if (mode === "whatsapp_voice" && !wa && !sender) throw new Error("whatsapp number or sender required");
+  // AI/heuristic moderation for spam/sexual; auto-block sender
+  if (text) {
+    const mod = Moderation.checkContent(text);
+    if (mod.flagged) {
+      if (sender) Profiles.setBlocked(sender, true);
+      const e = new Error(`auto_blocked_${mod.reason}`);
+      e.code = "auto_blocked";
+      throw e;
+    }
+  }
   if (sender) {
     if (!canSend(sender)) {
       const p = Profiles.getProfile(sender) || {};
