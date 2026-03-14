@@ -30,7 +30,7 @@ function send({ from, to, text, channel = "text", whatsapp, audioUrl }) {
   if (text) {
     const mod = Moderation.checkContent(text);
     if (mod.flagged) {
-      if (sender) Profiles.setBlocked(sender, true);
+      if (sender) Profiles.setBlocked(sender, true); // auto block fake/spam/sexual senders
       const e = new Error(`auto_blocked_${mod.reason}`);
       e.code = "auto_blocked";
       throw e;
