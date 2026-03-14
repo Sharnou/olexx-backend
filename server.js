@@ -17,6 +17,8 @@ const ImageJobs = require("./image-jobs");
 const Auth = require("./auth");
 const Saved = require("./saved");
 const Notes = require("./notifications");
+const { S3_UPLOAD_BASE, AWS_REGION, S3_BUCKET } = require("./config");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 
 function json(res, code, data) {
   const body = JSON.stringify(data);
@@ -504,11 +506,19 @@ const server = http.createServer(async (req, res) => {
       const [meta, b64] = dataUrl.split(",");
       const ext = meta.includes("webm") ? "webm" : "ogg";
       const buf = Buffer.from(b64, "base64");
-      const dir = path.join(__dirname, "uploads");
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir);
-      const filename = `voice_${Date.now()}.${ext}`;
-      fs.writeFileSync(path.join(dir, filename), buf);
-      return json(res, 200, { url: `/uploads/${filename}` });
+      const key = `voice/${Date.now()}_${Math.random().toString(36).slice(2, 6)}.${ext}`;
+      if (AWS_REGION && S3_BUCKET) {
+        const client = new S3Client({ region: AWS_REGION });
+        await client.send(new PutObjectCommand({ Bucket: S3_BUCKET, Key: key, Body: buf, ContentType: meta.split(";")[0].replace("data:", "") }));
+        const base = S3_UPLOAD_BASE || `https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com`;
+        return json(res, 200, { url: `${base}/${key}` });
+      } else {
+        const dir = path.join(__dirname, "uploads");
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+        const filename = key.replace("voice/", "");
+        fs.writeFileSync(path.join(dir, filename), buf);
+        return json(res, 200, { url: `/uploads/${filename}` });
+      }
     } catch (e) {
       return json(res, 400, { error: e.message || "upload failed" });
     }

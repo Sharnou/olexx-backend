@@ -58,9 +58,13 @@ function notifyRecipient(recipientId, msg) {
   // If profile has whatsapp and channel implies WhatsApp, flag a WhatsApp notification (number not exposed)
   if (profile.whatsapp && (msg.channel === "whatsapp_voice" || msg.fromWhatsapp)) {
     Notifications.push(recipientId, { type: "whatsapp_alert", masked: "***", at: msg.at });
-    // attempt to deliver via WhatsApp Business API if configured
     const text = msg.text || "You have a new OLEXX chat message";
-    Whatsapp.sendWhatsapp(profile.whatsapp, text);
+    const hasAudio = Boolean(msg.audioUrl);
+    if (hasAudio) {
+      Whatsapp.sendWhatsappMedia(profile.whatsapp, msg.audioUrl, "audio");
+    } else {
+      Whatsapp.sendWhatsappText(profile.whatsapp, text);
+    }
   }
 }
 
