@@ -379,7 +379,8 @@ function search(body) {
       score += tf * idf(tk);
     }
     const vis = visibilityFromRating(doc.seller && doc.seller.rating, doc.seller && doc.seller.reviews);
-    if (vis.visibility === "featured") score *= 1.3;
+    if (vis.visibility === "blocked") continue;
+    if (vis.visibility === "featured") score *= 1.5;
     else if (vis.visibility === "low") score *= 0.7;
     if (q.sort === "newest") score += doc.createdAt / 1e13;
     if (q.sort === "cheapest" && doc.price !== undefined) score += 1e6 / Math.max(1, doc.price);
