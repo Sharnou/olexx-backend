@@ -3,7 +3,7 @@ const url = require("url");
 const { runAiClassifier } = require("./classifier");
 const { TAXONOMY } = require("./taxonomy");
 const { visibilityFromRating } = require("./ranking");
-const { SUPER_ADMIN_EMAIL, DEV_MODE, USE_ES, USE_RABBIT, S3_UPLOAD_BASE, S3_CDN_BASE, USE_AWS_PRESIGN, AWS_REGION, S3_BUCKET } = require("./config");
+const { SUPER_ADMIN_EMAIL, DEV_MODE, USE_ES, USE_RABBIT, S3_UPLOAD_BASE, S3_CDN_BASE, USE_AWS_PRESIGN, AWS_REGION, S3_BUCKET, ADMIN_EMAILS } = require("./config");
 const SearchAdapter = USE_ES ? require("./elasticsearch") : require("./search");
 const InMemory = require("./search");
 const Profiles = require("./profiles");
@@ -61,7 +61,10 @@ function isAdmin(req) {
   const superE = String(SUPER_ADMIN_EMAIL || "").toLowerCase().trim();
   const user = getUserFromAuth(req);
   const tokenEmail = user && user.email ? String(user.email).toLowerCase().trim() : "";
-  return !!(tokenEmail && superE && tokenEmail === superE);
+  if (!tokenEmail) return false;
+  if (superE && tokenEmail === superE) return true;
+  if (ADMIN_EMAILS.includes(tokenEmail)) return true;
+  return false;
 }
 
 const commentLimiter = createLimiter({ windowMs: 60_000, max: 6 });
@@ -276,6 +279,8 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { key, method: "PUT", uploadUrl, headers: { "Content-Type": contentType }, expiresIn: 300, cdnUrl });
   }
   if (method === "POST" && parsed.pathname === "/api/saved-searches") {
+    const user = getUserFromAuth(req);
+    if (!user) return json(res, 401, { error: "auth_required" });
     const u = getUserFromAuth(req);
     if (!u) return json(res, 401, { error: "unauthorized" });
     const body = await parseBody(req);
@@ -283,11 +288,15 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { id });
     }
   if (method === "GET" && parsed.pathname === "/api/saved-searches") {
+    const user = getUserFromAuth(req);
+    if (!user) return json(res, 401, { error: "auth_required" });
     const u = getUserFromAuth(req);
     if (!u) return json(res, 401, { error: "unauthorized" });
     return json(res, 200, { items: Saved.listSaved(u.id) });
   }
   if (method === "DELETE" && parsed.pathname === "/api/saved-searches") {
+    const user = getUserFromAuth(req);
+    if (!user) return json(res, 401, { error: "auth_required" });
     const u = getUserFromAuth(req);
     if (!u) return json(res, 401, { error: "unauthorized" });
     const id = String(parsed.query.id || "");
@@ -482,8 +491,8 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = await parseBody(req);
       const authedUser = getUserFromAuth(req);
-      if (body.from && authedUser && authedUser.id && String(authedUser.id) !== String(body.from)) {
-        return json(res, 401, { error: "token_mismatch" });
+      if (body.from) {
+        if (!authedUser || String(authedUser.id) !== String(body.from)) return json(res, 401, { error: "token_mismatch" });
       }
       const msg = Chat.send({ from: body.from || (authedUser && authedUser.id), to: body.to, text: body.text, channel: body.channel, whatsapp: body.whatsapp, audioUrl: body.audioUrl });
       return json(res, 200, msg);
