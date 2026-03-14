@@ -1,0 +1,159 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>OLEXX Demo - User</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, Arial; margin: 20px; }
+    input, select, button, textarea { margin: 4px 0; padding: 8px; width: 100%; max-width: 520px; }
+    .row { max-width: 540px; margin-bottom: 16px; }
+    pre { background: #f6f8fa; padding: 10px; border-radius: 6px; overflow: auto; }
+  </style>
+  <script src="/client-api.js"></script>
+</head>
+<body>
+  <h1>OLEXX User Demo</h1>
+
+  <div class="row">
+    <h3>Create/Update Profile</h3>
+    <input id="p-id" placeholder="seller id (e.g., seller_123)" />
+    <input id="p-name" placeholder="name" />
+    <textarea id="p-bio" placeholder="bio"></textarea>
+    <button onclick="upsertProfile()">Save Profile</button>
+    <pre id="profileOut"></pre>
+  </div>
+
+  <div class="row">
+    <h3>Add Comment + Rating</h3>
+    <input id="c-seller" placeholder="seller id" />
+    <input id="c-author" placeholder="author id (optional)" />
+    <input id="c-author-name" placeholder="author name (optional)" />
+    <input id="c-rating" type="number" min="1" max="5" placeholder="rating 1-5" />
+    <textarea id="c-text" placeholder="comment text"></textarea>
+    <button onclick="addComment()">Submit Comment</button>
+    <pre id="commentOut"></pre>
+  </div>
+
+  <div class="row">
+    <h3>Classify Listing</h3>
+    <input id="cls-title" placeholder="title (e.g., iPhone 15 Pro 256GB)" />
+    <button onclick="classify()">Classify</button>
+    <pre id="classifyOut"></pre>
+  </div>
+
+  <div class="row">
+    <h3>Index Listing</h3>
+    <textarea id="index-json" rows="6" placeholder='{"title":"iPhone 15 Pro","category":{"l1":"Electronics","l2":"Mobile Phones"},"attributes":{"Brand":"Apple","Storage":"256 GB"},"seller":{"id":"seller_123"}}'></textarea>
+    <button onclick="indexDoc()">Index</button>
+    <pre id="indexOut"></pre>
+  </div>
+
+  <div class="row">
+    <h3>Search</h3>
+    <input id="q-text" placeholder="text (e.g., iphone)" />
+    <input id="q-l1" placeholder='L1 (e.g., Electronics)' />
+    <input id="q-l2" placeholder='L2 (e.g., Mobile Phones)' />
+    <button onclick="search()">Search</button>
+    <pre id="searchOut"></pre>
+  </div>
+
+  <div class="row">
+    <h3>Chat</h3>
+    <input id="chat-from" placeholder="from (seller id)" />
+    <input id="chat-to" placeholder="to (user id)" />
+    <input id="chat-text" placeholder="message" />
+    <button onclick="chatSend()">Send</button>
+    <button onclick="chatThread()">Load Thread</button>
+    <pre id="chatOut"></pre>
+  </div>
+
+  <div class="row">
+    <h3>Upload Images (MQ stub)</h3>
+    <input id="up-seller" placeholder="seller id" />
+    <input id="up-listing" placeholder="listing id (optional)" />
+    <textarea id="up-images" rows="4" placeholder='[{"name":"sofa.jpg","url":"https://example.com/sofa.jpg"}]'></textarea>
+    <button onclick="uploadImages()">Upload</button>
+    <input id="up-job" placeholder="job id" />
+    <button onclick="uploadStatus()">Status</button>
+    <button onclick="uploadResult()">Result</button>
+    <pre id="uploadOut"></pre>
+  </div>
+
+  <script>
+    const api = new OlexxClient(location.origin);
+    async function upsertProfile() {
+      const id = document.getElementById("p-id").value.trim();
+      const name = document.getElementById("p-name").value;
+      const bio = document.getElementById("p-bio").value;
+      const out = await api.upsertProfile({ id, name, bio });
+      document.getElementById("profileOut").textContent = JSON.stringify(out, null, 2);
+    }
+    async function addComment() {
+      const sellerId = document.getElementById("c-seller").value.trim();
+      const rating = Number(document.getElementById("c-rating").value);
+      const text = document.getElementById("c-text").value;
+      const authorId = document.getElementById("c-author").value || undefined;
+      const authorName = document.getElementById("c-author-name").value || undefined;
+      const out = await api.addComment(sellerId, rating, text, authorId, authorName);
+      document.getElementById("commentOut").textContent = JSON.stringify(out, null, 2);
+    }
+    async function classify() {
+      const title = document.getElementById("cls-title").value;
+      const out = await api.classify(title);
+      document.getElementById("classifyOut").textContent = JSON.stringify(out, null, 2);
+    }
+    async function indexDoc() {
+      try {
+        const j = JSON.parse(document.getElementById("index-json").value);
+        const out = await api.index(j);
+        document.getElementById("indexOut").textContent = JSON.stringify(out, null, 2);
+      } catch (e) {
+        document.getElementById("indexOut").textContent = e.message;
+      }
+    }
+    async function search() {
+      const text = document.getElementById("q-text").value;
+      const l1 = document.getElementById("q-l1").value || undefined;
+      const l2 = document.getElementById("q-l2").value || undefined;
+      const out = await api.search({ text, l1, l2, page: 1, pageSize: 10 });
+      document.getElementById("searchOut").textContent = JSON.stringify(out, null, 2);
+    }
+    async function chatSend() {
+      const from = document.getElementById("chat-from").value.trim();
+      const to = document.getElementById("chat-to").value.trim();
+      const text = document.getElementById("chat-text").value;
+      const out = await api.chatSend(from, to, text);
+      document.getElementById("chatOut").textContent = JSON.stringify(out, null, 2);
+    }
+    async function chatThread() {
+      const a = document.getElementById("chat-from").value.trim();
+      const b = document.getElementById("chat-to").value.trim();
+      const out = await api.chatThread(a, b, 50);
+      document.getElementById("chatOut").textContent = JSON.stringify(out, null, 2);
+    }
+    async function uploadImages() {
+      try {
+        const sellerId = document.getElementById("up-seller").value.trim();
+        const listingId = document.getElementById("up-listing").value.trim() || undefined;
+        const images = JSON.parse(document.getElementById("up-images").value);
+        const out = await api.uploadImages(sellerId, listingId, images);
+        document.getElementById("uploadOut").textContent = JSON.stringify(out, null, 2);
+        if (out.jobId) document.getElementById("up-job").value = out.jobId;
+      } catch (e) {
+        document.getElementById("uploadOut").textContent = e.message;
+      }
+    }
+    async function uploadStatus() {
+      const jobId = document.getElementById("up-job").value.trim();
+      const out = await api.uploadStatus(jobId);
+      document.getElementById("uploadOut").textContent = JSON.stringify(out, null, 2);
+    }
+    async function uploadResult() {
+      const jobId = document.getElementById("up-job").value.trim();
+      const out = await api.uploadResult(jobId);
+      document.getElementById("uploadOut").textContent = JSON.stringify(out, null, 2);
+    }
+  </script>
+</body>
+</html>

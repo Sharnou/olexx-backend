@@ -1,0 +1,25 @@
+name: olexx_flutter
+description: OLEXX starter app
+publish_to: "none"
+version: 0.1.0+1
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  flutter_material_color_picker: ^1.1.0
+  cupertino_icons: ^1.0.6
+  image_picker: ^1.0.7
+  dio: ^5.4.0
+  shared_preferences: ^2.2.2
+  flutter_image_compress: ^2.1.0
+  flutter_svg: ^2.0.9
+  url_launcher: ^6.2.5
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/logo_pyramid.svg
