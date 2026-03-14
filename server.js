@@ -223,6 +223,15 @@ const server = http.createServer(async (req, res) => {
     if (hdrCountry) out.items = out.items.filter((it) => !it.country || it.country === hdrCountry);
     return json(res, 200, out);
   }
+  if (method === "GET" && parsed.pathname === "/api/listing") {
+    const id = String(parsed.query.id || "");
+    if (!id) return json(res, 400, { error: "id required" });
+    const doc = InMemory.getDoc(id);
+    if (!doc) return json(res, 404, { error: "not found" });
+    const hdrCountry = req.headers["x-country"] ? String(req.headers["x-country"]).trim() : null;
+    if (hdrCountry && doc.country && doc.country !== hdrCountry && !isAdmin(req)) return json(res, 403, { error: "cross_country_blocked" });
+    return json(res, 200, doc);
+  }
   if (method === "PUT" && parsed.pathname === "/api/listings") {
     const u = getUserFromAuth(req);
     if (!u) return json(res, 401, { error: "unauthorized" });

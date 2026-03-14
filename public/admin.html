@@ -64,6 +64,14 @@
     <div class="card">
       <div style="font-weight:800;">Moderation queue</div>
       <button class="btn" onclick="loadQueue()">Load pending</button>
+      <div class="two">
+        <input id="mod-id" placeholder="moderation id" />
+        <select id="mod-status">
+          <option value="resolved">Resolve</option>
+          <option value="rejected">Reject</option>
+        </select>
+      </div>
+      <button class="btn btn-secondary" style="margin-top:8px;" onclick="resolveMod()">Apply</button>
       <pre id="mod-out"></pre>
     </div>
   </div>
@@ -125,7 +133,10 @@
       document.getElementById("mod-out").textContent = JSON.stringify(data, null, 2);
     }
 
-    async function resolveMod(id, status) {
+    async function resolveMod() {
+      const id = document.getElementById("mod-id").value.trim();
+      const status = document.getElementById("mod-status").value;
+      if (!id) return;
       await fetch("/api/admin/moderation/resolve", {
         method: "POST",
         headers: Object.assign({ "Content-Type": "application/json" }, adminHeaders()),

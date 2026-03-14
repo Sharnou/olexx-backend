@@ -44,6 +44,8 @@
       <a href="#sell">Sell</a>
       <a href="#admin">Admin</a>
       <a href="#auth" id="auth-link" style="font-weight:700;">Login / Register</a>
+      <span id="user-indicator" class="muted" style="margin-left:12px;"></span>
+      <button class="btn btn-secondary" id="logout-btn" style="display:none;" onclick="logout()">Logout</button>
     </nav>
   </header>
 
@@ -552,6 +554,7 @@
       if (data.token) {
         localStorage.setItem("olexxToken", data.token);
         document.getElementById("auth-status").textContent = `Logged in as ${data.user?.id || ""}`;
+        renderUserIndicator(data.user);
       } else {
         document.getElementById("auth-status").textContent = data.error || "Verify failed";
       }
@@ -563,6 +566,38 @@
       if (t) return Object.assign({}, base, { Authorization: `Bearer ${t}` });
       return base;
     }
+
+    function renderUserIndicator(user) {
+      const ind = document.getElementById("user-indicator");
+      const btn = document.getElementById("logout-btn");
+      const t = authToken();
+      if (user) {
+        ind.textContent = `Logged in: ${user.email || user.phone || user.id}`;
+        btn.style.display = "inline-block";
+      } else if (t) {
+        ind.textContent = "Logged in";
+        btn.style.display = "inline-block";
+      } else {
+        ind.textContent = "";
+        btn.style.display = "none";
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem("olexxToken");
+      renderUserIndicator(null);
+    }
+
+    // on load, try /api/auth/me to show user
+    (async () => {
+      const t = authToken();
+      if (!t) return;
+      const res = await fetch("/api/auth/me", { headers: authHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        renderUserIndicator(data.user);
+      }
+    })();
 
     const siteLang = document.documentElement.lang || "en";
     const userLang = (navigator.language || "en").split("-")[0];
