@@ -2,6 +2,7 @@ const { visibilityFromRating } = require("./ranking");
 const { TAXONOMY } = require("./taxonomy");
 const fs = require("fs");
 const path = require("path");
+const DB = require("./db");
 
 const store = new Map();
 const index = new Map();
@@ -492,6 +493,11 @@ process.on("beforeExit", () => {
 });
 
 load();
+// seed from DB on startup
+try {
+  const docs = DB.loadListings();
+  if (docs && docs.length) indexBulk(docs);
+} catch {}
 
 function updateSellerStats(sellerId, rating, reviews) {
   const sid = String(sellerId || "").trim();

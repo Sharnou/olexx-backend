@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const DB = require("./db");
 
 const profiles = new Map();
 const comments = new Map();
@@ -34,12 +35,17 @@ function upsertProfile(p) {
     blocked: prev.blocked || false,
   };
   profiles.set(id, obj);
+  DB.upsertProfile(obj);
   return obj;
 }
 
 function getProfile(id) {
   const p = profiles.get(String(id));
-  if (!p) return null;
+  if (!p) {
+    const dbp = DB.getProfile(String(id));
+    if (dbp) return dbp;
+    return null;
+  }
   return { ...p };
 }
 
