@@ -92,4 +92,51 @@ async function suggestFromMedia({ title, description, imageBase64 }) {
   return parseExtraction(ai.content);
 }
 
-module.exports = { suggestFromMedia };
+async function translateText(text, targetLang) {
+  if (!AI_API_KEY) return { ok: false, reason: "not_configured" };
+  const prompt = `Translate the following content to ${targetLang}. Keep numbers and proper nouns.`;
+  const body = {
+    model: AI_MODEL,
+    messages: [
+      { role: "system", content: "You translate text accurately and keep formatting minimal." },
+      { role: "user", content: prompt },
+      { role: "user", content: text },
+    ],
+    max_tokens: 600,
+    temperature: 0.2,
+  };
+  const url = new URL(AI_API_URL);
+  const data = JSON.stringify(body);
+  return new Promise((resolve) => {
+    const req = https.request(
+      {
+        method: "POST",
+        hostname: url.hostname,
+        path: url.pathname,
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(data),
+          Authorization: `Bearer ${AI_API_KEY}`,
+        },
+      },
+      (res) => {
+        let chunks = "";
+        res.on("data", (d) => (chunks += d));
+        res.on("end", () => {
+          try {
+            const json = JSON.parse(chunks);
+            const content = json.choices?.[0]?.message?.content || "";
+            resolve({ ok: true, text: content });
+          } catch (e) {
+            resolve({ ok: false, error: e.message });
+          }
+        });
+      }
+    );
+    req.on("error", (err) => resolve({ ok: false, error: err.message }));
+    req.write(data);
+    req.end();
+  });
+}
+
+module.exports = { suggestFromMedia, translateText };

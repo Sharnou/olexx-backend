@@ -19,6 +19,7 @@ const Saved = require("./saved");
 const Notes = require("./notifications");
 const AI = require("./ai");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const ModerationQueue = require("./moderation-queue");
 
 function json(res, code, data) {
   const body = JSON.stringify(data);
@@ -77,6 +78,18 @@ function getUserFromAuth(req) {
   if (!t) return null;
   const u = Auth.getUserByToken(t);
   return u || null;
+}
+
+function requireUser(req) {
+  const u = getUserFromAuth(req);
+  if (!u) throw new Error("auth_required");
+  return u;
+}
+
+function requireUser(req) {
+  const u = getUserFromAuth(req);
+  if (!u) throw new Error("auth_required");
+  return u;
 }
 
 const server = http.createServer(async (req, res) => {
@@ -279,30 +292,36 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { key, method: "PUT", uploadUrl, headers: { "Content-Type": contentType }, expiresIn: 300, cdnUrl });
   }
   if (method === "POST" && parsed.pathname === "/api/saved-searches") {
-    const user = getUserFromAuth(req);
-    if (!user) return json(res, 401, { error: "auth_required" });
-    const u = getUserFromAuth(req);
-    if (!u) return json(res, 401, { error: "unauthorized" });
-    const body = await parseBody(req);
-    const id = Saved.addSaved(u.id, body.name || "", body.query || {});
-    return json(res, 200, { id });
+    try {
+      const u = requireUser(req);
+      const body = await parseBody(req);
+      const id = Saved.addSaved(u.id, body.name || "", body.query || {});
+      return json(res, 200, { id });
+    } catch (e) {
+      if (e.message === "auth_required") return json(res, 401, { error: "auth_required" });
+      return json(res, 400, { error: e.message || "bad request" });
     }
+  }
   if (method === "GET" && parsed.pathname === "/api/saved-searches") {
-    const user = getUserFromAuth(req);
-    if (!user) return json(res, 401, { error: "auth_required" });
-    const u = getUserFromAuth(req);
-    if (!u) return json(res, 401, { error: "unauthorized" });
-    return json(res, 200, { items: Saved.listSaved(u.id) });
+    try {
+      const u = requireUser(req);
+      return json(res, 200, { items: Saved.listSaved(u.id) });
+    } catch (e) {
+      if (e.message === "auth_required") return json(res, 401, { error: "auth_required" });
+      return json(res, 400, { error: e.message || "bad request" });
+    }
   }
   if (method === "DELETE" && parsed.pathname === "/api/saved-searches") {
-    const user = getUserFromAuth(req);
-    if (!user) return json(res, 401, { error: "auth_required" });
-    const u = getUserFromAuth(req);
-    if (!u) return json(res, 401, { error: "unauthorized" });
-    const id = String(parsed.query.id || "");
-    if (!id) return json(res, 400, { error: "id required" });
-    const ok = Saved.removeSaved(u.id, id);
-    return json(res, 200, { ok });
+    try {
+      const u = requireUser(req);
+      const id = String(parsed.query.id || "");
+      if (!id) return json(res, 400, { error: "id required" });
+      const ok = Saved.removeSaved(u.id, id);
+      return json(res, 200, { ok });
+    } catch (e) {
+      if (e.message === "auth_required") return json(res, 401, { error: "auth_required" });
+      return json(res, 400, { error: e.message || "bad request" });
+    }
   }
   if (method === "POST" && parsed.pathname === "/api/favorites") {
     const u = getUserFromAuth(req);
@@ -349,6 +368,13 @@ const server = http.createServer(async (req, res) => {
   }
   if (method === "POST" && parsed.pathname === "/api/search") {
     const body = await parseBody(req);
+    const hdrCountry = req.headers["x-country"] ? String(req.headers["x-country"]).trim() : null;
+    if (hdrCountry) {
+      if (body.country && String(body.country).trim() !== hdrCountry) {
+        return json(res, 403, { error: "cross_country_blocked" });
+      }
+      body.country = hdrCountry;
+    }
     const result = await SearchAdapter.search(body || {});
     const cacheHit = result && result.meta && result.meta.cacheHit ? "HIT" : "MISS";
     const took = result && result.meta && result.meta.tookMs ? String(result.meta.tookMs) : "0";
@@ -357,6 +383,39 @@ const server = http.createServer(async (req, res) => {
   if (method === "GET" && parsed.pathname === "/api/suggest") {
     const q = String(parsed.query.text || "");
     return json(res, 200, { suggestions: SearchAdapter.suggest(q) });
+  }
+  if (method === "GET" && parsed.pathname === "/sitemap.xml") {
+    const docs = InMemory.listDocs ? InMemory.listDocs() : [];
+    const urls = [];
+    urls.push({ loc: "/", lastmod: new Date().toISOString() });
+    urls.push({ loc: "/admin.html", lastmod: new Date().toISOString() });
+    for (const group of TAXONOMY) {
+      urls.push({ loc: `/category/${encodeURIComponent(group.l1)}`, lastmod: new Date().toISOString() });
+      for (const cat of group.categories) {
+        urls.push({ loc: `/category/${encodeURIComponent(group.l1)}/${encodeURIComponent(cat.l2)}`, lastmod: new Date().toISOString() });
+      }
+    }
+    for (const d of docs || []) {
+      urls.push({
+        loc: `/listing/${encodeURIComponent(d.id)}`,
+        lastmod: d.createdAt ? new Date(d.createdAt).toISOString() : new Date().toISOString(),
+      });
+    }
+    const base = req.headers["x-external-base"] || "http://localhost:3000";
+    const xml =
+      `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+      urls
+        .map((u) => `  <url><loc>${base}${u.loc}</loc><lastmod>${u.lastmod}</lastmod></url>`)
+        .join("\n") +
+      "\n</urlset>";
+    res.writeHead(200, { "Content-Type": "application/xml" });
+    return res.end(xml);
+  }
+  if (method === "GET" && parsed.pathname === "/robots.txt") {
+    const base = req.headers["x-external-base"] || "http://localhost:3000";
+    const body = `User-agent: *\nAllow: /\nSitemap: ${base}/sitemap.xml\n`;
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    return res.end(body);
   }
   if (method === "POST" && parsed.pathname === "/api/index/clear") {
     await SearchAdapter.clear();
@@ -487,6 +546,18 @@ const server = http.createServer(async (req, res) => {
     const items = AdminLog.list({ sellerId, limit });
     return json(res, 200, { items });
   }
+  if (method === "GET" && parsed.pathname === "/api/admin/moderation") {
+    if (!isAdmin(req)) return json(res, 403, { error: "forbidden" });
+    const status = parsed.query.status ? String(parsed.query.status) : null;
+    const items = ModerationQueue.list(status);
+    return json(res, 200, { items });
+  }
+  if (method === "POST" && parsed.pathname === "/api/admin/moderation/resolve") {
+    if (!isAdmin(req)) return json(res, 403, { error: "forbidden" });
+    const body = await parseBody(req);
+    const ok = ModerationQueue.resolve(body.id, body.status || "resolved");
+    return json(res, ok ? 200 : 404, ok ? { ok } : { error: "not_found" });
+  }
   if (method === "POST" && parsed.pathname === "/api/chat/send") {
     try {
       const body = await parseBody(req);
@@ -504,12 +575,19 @@ const server = http.createServer(async (req, res) => {
     }
   }
   if (method === "GET" && parsed.pathname === "/api/chat/thread") {
-    const userA = String(parsed.query.userA || "");
-    const userB = String(parsed.query.userB || "");
-    const limit = parsed.query.limit ? Number(parsed.query.limit) : 50;
-    if (!userA || !userB) return json(res, 400, { error: "userA and userB required" });
-    const items = Chat.thread({ userA, userB, limit });
-    return json(res, 200, { items });
+    try {
+      const authed = requireUser(req);
+      const userA = String(parsed.query.userA || "");
+      const userB = String(parsed.query.userB || "");
+      const limit = parsed.query.limit ? Number(parsed.query.limit) : 50;
+      if (!userA || !userB) return json(res, 400, { error: "userA and userB required" });
+      if (![userA, userB].includes(String(authed.id)) && !isAdmin(req)) return json(res, 403, { error: "forbidden" });
+      const items = Chat.thread({ userA, userB, limit });
+      return json(res, 200, { items });
+    } catch (e) {
+      if (e.message === "auth_required") return json(res, 401, { error: "auth_required" });
+      return json(res, 400, { error: e.message || "bad request" });
+    }
   }
   if (method === "POST" && parsed.pathname === "/api/ai/suggest") {
     try {
@@ -520,7 +598,30 @@ const server = http.createServer(async (req, res) => {
         b64 = dataUrl.split(",")[1];
       }
       const ai = await AI.suggestFromMedia({ title: body.title, description: body.description, imageBase64: b64 });
+      if (ai.risk === "blocked") {
+        ModerationQueue.add("ai_flagged_listing", { title: body.title, description: body.description });
+      }
       return json(res, 200, ai);
+    } catch (e) {
+      return json(res, 400, { error: e.message || "bad request" });
+    }
+  }
+  if (method === "POST" && parsed.pathname === "/api/ai/translate") {
+    try {
+      const body = await parseBody(req);
+      const out = await AI.translateText(String(body.text || ""), String(body.to || "en"));
+      if (!out.ok) return json(res, 400, { error: out.error || "translation_failed" });
+      return json(res, 200, { text: out.text });
+    } catch (e) {
+      return json(res, 400, { error: e.message || "bad request" });
+    }
+  }
+  if (method === "POST" && parsed.pathname === "/api/ai/translate") {
+    try {
+      const body = await parseBody(req);
+      const out = await AI.translateText(String(body.text || ""), String(body.to || "en"));
+      if (!out.ok) return json(res, 400, { error: out.error || "translation_failed" });
+      return json(res, 200, { text: out.text });
     } catch (e) {
       return json(res, 400, { error: e.message || "bad request" });
     }
