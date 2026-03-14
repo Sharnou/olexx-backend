@@ -8,7 +8,7 @@ const sessionsFile = path.join(__dirname, "data-sessions.json");
 const users = new Map();
 const sessions = new Map();
 const otps = new Map(); // key -> { code, exp }
-const { OTP_EMAIL_FROM, OTP_SMS_PROVIDER, DEV_MODE } = require("./config");
+const { OTP_EMAIL_FROM, OTP_SMS_PROVIDER, DEV_MODE, TWILIO_SID, TWILIO_TOKEN, TWILIO_FROM, SENDGRID_API_KEY } = require("./config");
 
 function persist() {
   try {
@@ -172,7 +172,47 @@ function deliverOtp(method, value, code) {
   if (DEV_MODE || OTP_SMS_PROVIDER === "console") {
     console.log(`[OTP] ${method} ${value}: ${code}`);
   }
-  // Email/SMS integrations can be added here.
+  if (method === "phone" && TWILIO_SID && TWILIO_TOKEN && TWILIO_FROM) {
+    const payload = new URLSearchParams({
+      To: value,
+      From: TWILIO_FROM,
+      Body: `Your OLEXX OTP is ${code}`,
+    }).toString();
+    const opts = {
+      method: "POST",
+      headers: {
+        Authorization: "Basic " + Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString("base64"),
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Content-Length": Buffer.byteLength(payload),
+      },
+    };
+    const req = require("https").request(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`, opts, () => {});
+    req.on("error", () => {});
+    req.write(payload);
+    req.end();
+  }
+  if (method === "email" && SENDGRID_API_KEY && OTP_EMAIL_FROM) {
+    const body = JSON.stringify({
+      personalizations: [{ to: [{ email: value }] }],
+      from: { email: OTP_EMAIL_FROM },
+      subject: "Your OLEXX OTP",
+      content: [{ type: "text/plain", value: `Your OLEXX OTP is ${code}` }],
+    });
+    const opts = {
+      method: "POST",
+      hostname: "api.sendgrid.com",
+      path: "/v3/mail/send",
+      headers: {
+        Authorization: `Bearer ${SENDGRID_API_KEY}`,
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(body),
+      },
+    };
+    const req = require("https").request(opts, () => {});
+    req.on("error", () => {});
+    req.write(body);
+    req.end();
+  }
 }
 
 load();
