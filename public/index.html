@@ -265,6 +265,7 @@
     });
 
     const searchState = { page: 1 };
+    const authToken = () => localStorage.getItem("olexxToken");
     const taxonomy = {
       "Vehicles": ["Cars for Sale"],
       "Electronics": ["Mobile Phones", "Laptops"],
@@ -414,7 +415,7 @@
       const adminEmail = document.getElementById("admin-email").value.trim();
       const res = await fetch("/api/admin/mute", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-email": adminEmail },
+        headers: authHeaders({ "Content-Type": "application/json", "x-admin-email": adminEmail }),
         body: JSON.stringify({ sellerId, value: val }),
       });
       const data = await res.json();
@@ -426,7 +427,7 @@
       const adminEmail = document.getElementById("admin-email").value.trim();
       const res = await fetch("/api/admin/block", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-email": adminEmail },
+        headers: authHeaders({ "Content-Type": "application/json", "x-admin-email": adminEmail }),
         body: JSON.stringify({ sellerId, value: val }),
       });
       const data = await res.json();
@@ -548,6 +549,13 @@
       } else {
         document.getElementById("auth-status").textContent = data.error || "Verify failed";
       }
+    }
+
+    // Helper to add auth header
+    function authHeaders(base = {}) {
+      const t = authToken();
+      if (t) return Object.assign({}, base, { Authorization: `Bearer ${t}` });
+      return base;
     }
   </script>
 </body>

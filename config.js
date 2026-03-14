@@ -15,4 +15,6 @@ const WHATSAPP_NUMBER_ID = process.env.WHATSAPP_NUMBER_ID || null; // WhatsApp B
 const AI_API_KEY = process.env.AI_API_KEY || null; // OpenAI-compatible key
 const AI_API_URL = process.env.AI_API_URL || "https://api.openai.com/v1/chat/completions";
 const AI_MODEL = process.env.AI_MODEL || "gpt-4o-mini";
+const OTP_EMAIL_FROM = process.env.OTP_EMAIL_FROM || null; // optional: from address
+const OTP_SMS_PROVIDER = process.env.OTP_SMS_PROVIDER || "console"; // console|stub
 module.exports = { SUPER_ADMIN_EMAIL, DEV_MODE, ES_HOST, ES_INDEX, USE_ES, RABBIT_URL, USE_RABBIT, S3_UPLOAD_BASE, S3_CDN_BASE, USE_AWS_PRESIGN, AWS_REGION, S3_BUCKET, WHATSAPP_TOKEN, WHATSAPP_NUMBER_ID, AI_API_KEY, AI_API_URL, AI_MODEL };

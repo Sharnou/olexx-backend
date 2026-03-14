@@ -8,6 +8,7 @@ const sessionsFile = path.join(__dirname, "data-sessions.json");
 const users = new Map();
 const sessions = new Map();
 const otps = new Map(); // key -> { code, exp }
+const { OTP_EMAIL_FROM, OTP_SMS_PROVIDER, DEV_MODE } = require("./config");
 
 function persist() {
   try {
@@ -53,7 +54,8 @@ function requestOtp(body) {
   const exp = Date.now() + 5 * 60 * 1000;
   otps.set(value, { code, exp });
   persist();
-  return { sent: true, devCode: code };
+  deliverOtp(method, value, code);
+  return { sent: true, devCode: DEV_MODE ? code : undefined };
 }
 
 function verifyOtp(body) {
@@ -163,6 +165,14 @@ function getUserByToken(t) {
 
 function getUser(id) {
   return users.get(String(id)) || null;
+}
+
+function deliverOtp(method, value, code) {
+  // Stub delivery: in production integrate email/SMS provider
+  if (DEV_MODE || OTP_SMS_PROVIDER === "console") {
+    console.log(`[OTP] ${method} ${value}: ${code}`);
+  }
+  // Email/SMS integrations can be added here.
 }
 
 load();
