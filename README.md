@@ -22,6 +22,70 @@ Small HTTP backend for classifieds-style listings with an in-memory search index
 - `npm start` — run HTTP server (`server.js`).
 - `npm run dev` — same with nodemon reload.
 - `npm test` — run the lightweight classifier/search sanity script.
+- Example search call (POST):
+  ```bash
+  curl -X POST http://localhost:4000/api/search ^
+    -H "Content-Type: application/json" ^
+    -d "{\"text\":\"iphone\",\"l1\":\"Electronics\",\"page\":1,\"pageSize\":5}"
+  ```
+
+## Handy API snippets (PowerShell)
+
+Admin check (requires `SUPER_ADMIN_EMAIL` set):
+```powershell
+Invoke-RestMethod -Headers @{'x-admin-email'='Ahmed_sharnou@yahoo.com'} -Uri "http://localhost:4000/api/admin/me"
+```
+
+Admin mute/block seller:
+```powershell
+Invoke-RestMethod -Method POST -Headers @{'x-admin-email'='Ahmed_sharnou@yahoo.com'} `
+  -Uri "http://localhost:4000/api/admin/mute" `
+  -ContentType "application/json" `
+  -Body (@{ sellerId="seller-123"; value=$true } | ConvertTo-Json)
+
+Invoke-RestMethod -Method POST -Headers @{'x-admin-email'='Ahmed_sharnou@yahoo.com'} `
+  -Uri "http://localhost:4000/api/admin/block" `
+  -ContentType "application/json" `
+  -Body (@{ sellerId="seller-123"; value=$true } | ConvertTo-Json)
+```
+
+Chat send + fetch thread:
+```powershell
+Invoke-RestMethod -Method POST -Uri "http://localhost:4000/api/chat/send" `
+  -ContentType "application/json" `
+  -Body (@{ from="userA"; to="userB"; text="Hi there" } | ConvertTo-Json)
+
+Invoke-RestMethod -Uri "http://localhost:4000/api/chat/thread?userA=userA&userB=userB&limit=10"
+```
+
+Search (POST):
+```powershell
+Invoke-RestMethod -Method POST -Uri "http://localhost:4000/api/search" `
+  -ContentType "application/json" `
+  -Body (@{ text="iphone"; l1="Electronics"; page=1; pageSize=5 } | ConvertTo-Json)
+```
+
+## Persisting the in-memory index
+- The in-memory search adapter saves listings to `data-index.json` on process exit and loads it on startup.
+- To seed data once, you can run `npm test` (indexes sample docs) then stop the process; `data-index.json` will be written. Keep that file to retain listings across restarts.
+- You can also call your own indexing logic to add docs and then stop the server cleanly to persist.
+
+## Quick UI hook (minimal demo)
+- Use the existing `public/index.html` to call the search API on port 4000. Example fetch snippet you can drop into the page:
+```html
+<script>
+async function runSearch() {
+  const res = await fetch('http://localhost:4000/api/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: 'iphone', l1: 'Electronics', page: 1, pageSize: 5 })
+  });
+  const data = await res.json();
+  console.log(data);
+}
+runSearch();
+</script>
+```
 
 ## Environment variables
 See `.env.example` for all supported variables. Key ones:
