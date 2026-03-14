@@ -7,6 +7,7 @@ const sessionsFile = path.join(__dirname, "data-sessions.json");
 
 const users = new Map();
 const sessions = new Map();
+const otps = new Map(); // key -> { code, exp }
 
 function persist() {
   try {
@@ -38,6 +39,38 @@ function id() {
 
 function token() {
   return crypto.randomBytes(24).toString("hex");
+}
+
+function otpCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function requestOtp(body) {
+  const method = String(body.method || "").toLowerCase().trim();
+  const value = method === "email" ? String(body.email || "").trim().toLowerCase() : String(body.phone || "").trim();
+  if (!value) throw new Error(`${method} required`);
+  const code = otpCode();
+  const exp = Date.now() + 5 * 60 * 1000;
+  otps.set(value, { code, exp });
+  persist();
+  return { sent: true, devCode: code };
+}
+
+function verifyOtp(body) {
+  const method = String(body.method || "").toLowerCase().trim();
+  const value = method === "email" ? String(body.email || "").trim().toLowerCase() : String(body.phone || "").trim();
+  const code = String(body.code || "").trim();
+  if (!value || !code) throw new Error("value and code required");
+  const entry = otps.get(value);
+  if (!entry || entry.code !== code || entry.exp < Date.now()) throw new Error("invalid_code");
+  // clear OTP
+  otps.delete(value);
+  if (method === "email") {
+    return register({ method: "email", email: value, name: body.name || "" });
+  } else if (method === "phone") {
+    return register({ method: "phone", phone: value, name: body.name || "" });
+  }
+  throw new Error("invalid method");
 }
 
 function findUserBy(method, value) {
@@ -142,4 +175,4 @@ process.on("beforeExit", () => {
   persist();
 });
 
-module.exports = { register, login, getUserByToken, getUser };
+module.exports = { register, login, getUserByToken, getUser, requestOtp, verifyOtp };

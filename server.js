@@ -512,6 +512,25 @@ const server = http.createServer(async (req, res) => {
       return json(res, 400, { error: e.message || "bad request" });
     }
   }
+  if (method === "POST" && parsed.pathname === "/api/auth/request-otp") {
+    try {
+      const body = await parseBody(req);
+      const out = Auth.requestOtp(body);
+      // expose code only in dev
+      return json(res, 200, { sent: true, devCode: DEV_MODE ? out.devCode : undefined });
+    } catch (e) {
+      return json(res, 400, { error: e.message || "bad request" });
+    }
+  }
+  if (method === "POST" && parsed.pathname === "/api/auth/verify-otp") {
+    try {
+      const body = await parseBody(req);
+      const out = Auth.verifyOtp(body);
+      return json(res, 200, out);
+    } catch (e) {
+      return json(res, 400, { error: e.message || "bad request" });
+    }
+  }
   if (method === "POST" && parsed.pathname === "/api/chat/upload-voice") {
     try {
       const body = await parseBody(req);

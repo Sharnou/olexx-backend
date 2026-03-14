@@ -48,6 +48,36 @@
   </header>
 
   <div class="container">
+    <section id="auth" class="card">
+      <div class="section-title">Login / Register (Email or Mobile OTP)</div>
+      <div class="two-col">
+        <div>
+          <label>Method</label>
+          <select id="auth-method">
+            <option value="email">Email</option>
+            <option value="phone">Mobile</option>
+          </select>
+        </div>
+        <div>
+          <label>Name (optional)</label>
+          <input id="auth-name" placeholder="Your name" />
+        </div>
+      </div>
+      <label>Email or Mobile</label>
+      <input id="auth-value" placeholder="user@example.com or +20123456789" />
+      <div class="two-col">
+        <div>
+          <label>OTP Code</label>
+          <input id="auth-otp" placeholder="6-digit" />
+        </div>
+        <div style="display:flex; gap:8px; align-items:flex-end;">
+          <button class="btn" onclick="requestOtp()">Request OTP</button>
+          <button class="btn btn-secondary" onclick="verifyOtp()">Verify</button>
+        </div>
+      </div>
+      <div id="auth-status" class="muted" style="margin-top:8px;"></div>
+    </section>
+
     <section class="hero">
       <div>
         <div class="pill green">AI-powered marketplace</div>
@@ -473,6 +503,50 @@
       } else {
         mediaRecorder.stop();
         mediaRecorder = null;
+      }
+    }
+
+    // Override auth link behavior and add OTP flows
+    (() => {
+      const link = document.getElementById("auth-link");
+      if (link) {
+        const clone = link.cloneNode(true);
+        link.parentNode.replaceChild(clone, link);
+        clone.addEventListener("click", (e) => {
+          e.preventDefault();
+          document.getElementById("auth").scrollIntoView({ behavior: "smooth" });
+        });
+      }
+    })();
+
+    async function requestOtp() {
+      const method = document.getElementById("auth-method").value;
+      const value = document.getElementById("auth-value").value.trim();
+      const res = await fetch("/api/auth/request-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(method === "email" ? { method, email: value } : { method, phone: value }),
+      });
+      const data = await res.json();
+      document.getElementById("auth-status").textContent = data.devCode ? `OTP sent (dev code: ${data.devCode})` : "OTP sent.";
+    }
+
+    async function verifyOtp() {
+      const method = document.getElementById("auth-method").value;
+      const value = document.getElementById("auth-value").value.trim();
+      const code = document.getElementById("auth-otp").value.trim();
+      const name = document.getElementById("auth-name").value.trim();
+      const res = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(method === "email" ? { method, email: value, code, name } : { method, phone: value, code, name }),
+      });
+      const data = await res.json();
+      if (data.token) {
+        localStorage.setItem("olexxToken", data.token);
+        document.getElementById("auth-status").textContent = `Logged in as ${data.user?.id || ""}`;
+      } else {
+        document.getElementById("auth-status").textContent = data.error || "Verify failed";
       }
     }
   </script>
