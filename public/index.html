@@ -1,206 +1,310 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>OLEXX Demo - User</title>
+  <title>OLEXX – Local AI Marketplace</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: system-ui, Arial; margin: 20px; }
-    input, select, button, textarea { margin: 4px 0; padding: 8px; width: 100%; max-width: 520px; }
-    .row { max-width: 540px; margin-bottom: 16px; }
-    pre { background: #f6f8fa; padding: 10px; border-radius: 6px; overflow: auto; }
-    .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin: 8px 0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-    .muted { color: #6b7280; font-size: 12px; }
-    .price { color: #16a34a; font-weight: 600; }
+    :root {
+      --primary: #0f172a;
+      --accent: #fbbf24;
+      --muted: #64748b;
+      --bg: #f8fafc;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: var(--bg); color: #0f172a; }
+    header { background: var(--primary); color: white; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+    nav a { color: white; text-decoration: none; margin-left: 16px; font-weight: 600; }
+    .btn { background: var(--accent); color: #1f2937; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+    .btn-secondary { background: white; color: var(--primary); border: 1px solid #e2e8f0; }
+    .container { max-width: 1080px; margin: 0 auto; padding: 24px; }
+    .hero { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; align-items: center; margin-bottom: 32px; }
+    .card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.04); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .price { color: #16a34a; font-weight: 700; }
+    label { font-size: 13px; color: var(--muted); display: block; margin-top: 12px; }
+    input, select, textarea { width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 14px; }
+    textarea { min-height: 100px; }
+    .section-title { font-size: 18px; font-weight: 800; margin: 0 0 12px 0; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { background: #e2e8f0; color: #0f172a; padding: 6px 10px; border-radius: 999px; font-size: 12px; }
+    .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+    .results { margin-top: 10px; }
+    .pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font-size: 12px; background: #ecfeff; color: #0ea5e9; font-weight: 600; }
+    .pill.green { background: #ecfdf3; color: #22c55e; }
+    footer { padding: 24px; text-align: center; color: var(--muted); }
   </style>
-  <script src="/client-api.js"></script>
 </head>
 <body>
-  <h1>OLEXX User Demo</h1>
+  <header>
+    <div style="font-weight:800;font-size:20px;">OLEXX</div>
+    <nav>
+      <a href="#browse">Browse</a>
+      <a href="#sell">Sell</a>
+      <a href="#admin">Admin</a>
+      <button class="btn" onclick="document.getElementById('sell').scrollIntoView({behavior:'smooth'})">Sell</button>
+    </nav>
+  </header>
 
-  <div class="row">
-    <h3>Create/Update Profile</h3>
-    <input id="p-id" placeholder="seller id (e.g., seller_123)" />
-    <input id="p-name" placeholder="name" />
-    <textarea id="p-bio" placeholder="bio"></textarea>
-    <button onclick="upsertProfile()">Save Profile</button>
-    <pre id="profileOut"></pre>
+  <div class="container">
+    <section class="hero">
+      <div>
+        <div class="pill green">AI-powered marketplace</div>
+        <h1 style="font-size:32px;margin:12px 0 8px;">Buy & sell locally with AI search, moderation, and fraud checks.</h1>
+        <p class="muted" style="font-size:15px;">Country-separated listings, instant translation, and smart recommendations keep buyers and sellers safe and engaged.</p>
+        <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn" onclick="document.getElementById('search-text').focus()">Browse now</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('sell').scrollIntoView({behavior:'smooth'})">Post an ad</button>
+        </div>
+        <div class="chips" style="margin-top:14px;">
+          <div class="chip">AI Moderation</div>
+          <div class="chip">Fraud Detection</div>
+          <div class="chip">Semantic Search</div>
+          <div class="chip">Multi-region</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-title">Live Search</div>
+        <label>Keyword</label>
+        <input id="search-text" placeholder="iphone, corolla, sofa..." value="iphone" />
+        <div class="two-col">
+          <div>
+            <label>Category (L1)</label>
+            <select id="search-l1">
+              <option value="">Any</option>
+              <option>Electronics</option>
+              <option>Vehicles</option>
+              <option>Properties</option>
+              <option>Home & Garden</option>
+            </select>
+          </div>
+          <div>
+            <label>Category (L2)</label>
+            <input id="search-l2" placeholder="Mobile Phones, Cars for Sale..." />
+          </div>
+        </div>
+        <div class="two-col">
+          <div>
+            <label>Country</label>
+            <select id="search-country">
+              <option>Egypt</option>
+              <option>UAE</option>
+              <option>USA</option>
+              <option>Saudi Arabia</option>
+              <option>UK</option>
+            </select>
+          </div>
+          <div>
+            <label>Page size</label>
+            <input id="search-size" type="number" value="5" min="1" max="50" />
+          </div>
+        </div>
+        <button class="btn" style="width:100%; margin-top:12px;" onclick="runSearch()">Search</button>
+        <div id="search-results" class="results"></div>
+        <pre id="search-json" style="margin-top:10px; max-height:180px;"></pre>
+      </div>
+    </section>
+
+    <section id="sell" class="card">
+      <div class="section-title">Post an ad (5 photos or 1 video)</div>
+      <div class="two-col">
+        <div>
+          <label>Title</label>
+          <input id="sell-title" placeholder="Toyota Corolla 2017 Clean" />
+        </div>
+        <div>
+          <label>Price</label>
+          <input id="sell-price" type="number" placeholder="190000" />
+        </div>
+      </div>
+      <label>Description</label>
+      <textarea id="sell-desc" placeholder="Add details, condition, mileage, etc."></textarea>
+      <div class="two-col">
+        <div>
+          <label>Country</label>
+          <select id="sell-country">
+            <option>Egypt</option>
+            <option>UAE</option>
+            <option>USA</option>
+            <option>Saudi Arabia</option>
+            <option>UK</option>
+          </select>
+        </div>
+        <div>
+          <label>City</label>
+          <input id="sell-city" placeholder="Cairo, Dubai, NYC..." />
+        </div>
+      </div>
+      <label>Category</label>
+      <div class="two-col">
+        <select id="sell-l1">
+          <option>Vehicles</option>
+          <option>Electronics</option>
+          <option>Properties</option>
+          <option>Home & Garden</option>
+        </select>
+        <input id="sell-l2" placeholder="Cars for Sale, Mobile Phones..." />
+      </div>
+      <label>Media (max 5 images or 1 video up to 30s)</label>
+      <input id="sell-files" type="file" accept="image/*,video/*" multiple />
+      <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+        <button class="btn" onclick="submitAd()">Publish</button>
+        <button class="btn btn-secondary" onclick="aiSuggest()">AI suggest from photos</button>
+      </div>
+      <pre id="sell-out" style="margin-top:10px;"></pre>
+    </section>
+
+    <section id="admin" class="two-col" style="margin-top:24px;">
+      <div class="card">
+        <div class="section-title">Admin actions</div>
+        <label>Seller ID</label>
+        <input id="admin-seller" placeholder="seller-123" />
+        <label>Admin email</label>
+        <input id="admin-email" value="Ahmed_sharnou@yahoo.com" />
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+          <button class="btn" onclick="adminMute(true)">Mute</button>
+          <button class="btn btn-secondary" onclick="adminMute(false)">Unmute</button>
+          <button class="btn" onclick="adminBlock(true)">Block</button>
+          <button class="btn btn-secondary" onclick="adminBlock(false)">Unblock</button>
+        </div>
+        <pre id="admin-out" style="margin-top:10px;"></pre>
+      </div>
+      <div class="card">
+        <div class="section-title">Chat</div>
+        <div class="two-col">
+          <div>
+            <label>From</label>
+            <input id="chat-from" placeholder="userA" />
+          </div>
+          <div>
+            <label>To</label>
+            <input id="chat-to" placeholder="userB" />
+          </div>
+        </div>
+        <label>Message</label>
+        <input id="chat-text" placeholder="Hi there" />
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+          <button class="btn" onclick="chatSend()">Send</button>
+          <button class="btn btn-secondary" onclick="chatThread()">Load Thread</button>
+        </div>
+        <pre id="chat-out" style="margin-top:10px;"></pre>
+      </div>
+    </section>
   </div>
 
-  <div class="row">
-    <h3>Add Comment + Rating</h3>
-    <input id="c-seller" placeholder="seller id" />
-    <input id="c-author" placeholder="author id (optional)" />
-    <input id="c-author-name" placeholder="author name (optional)" />
-    <input id="c-rating" type="number" min="1" max="5" placeholder="rating 1-5" />
-    <textarea id="c-text" placeholder="comment text"></textarea>
-    <button onclick="addComment()">Submit Comment</button>
-    <pre id="commentOut"></pre>
-  </div>
-
-  <div class="row">
-    <h3>Classify Listing</h3>
-    <input id="cls-title" placeholder="title (e.g., iPhone 15 Pro 256GB)" />
-    <button onclick="classify()">Classify</button>
-    <pre id="classifyOut"></pre>
-  </div>
-
-  <div class="row">
-    <h3>Index Listing</h3>
-    <textarea id="index-json" rows="6" placeholder='{"title":"iPhone 15 Pro","category":{"l1":"Electronics","l2":"Mobile Phones"},"attributes":{"Brand":"Apple","Storage":"256 GB"},"seller":{"id":"seller_123"}}'></textarea>
-    <button onclick="indexDoc()">Index</button>
-    <pre id="indexOut"></pre>
-  </div>
-
-  <div class="row">
-    <h3>Search</h3>
-    <input id="q-text" placeholder="text (e.g., iphone)" />
-    <input id="q-l1" placeholder='L1 (e.g., Electronics)' />
-    <input id="q-l2" placeholder='L2 (e.g., Mobile Phones)' />
-    <button onclick="search()">Search</button>
-    <pre id="searchOut"></pre>
-  </div>
-
-  <div class="row">
-    <h3>Quick Search (fetch demo)</h3>
-    <label>Keyword</label>
-    <input id="quick-text" placeholder="e.g., iphone" value="iphone" />
-    <label>L1</label>
-    <input id="quick-l1" placeholder="e.g., Electronics" value="Electronics" />
-    <label>L2</label>
-    <input id="quick-l2" placeholder="e.g., Mobile Phones" value="Mobile Phones" />
-    <button onclick="quickSearch()">Run Quick Search</button>
-    <pre id="quickOut"></pre>
-    <div id="quickResults"></div>
-  </div>
-
-  <div class="row">
-    <h3>Chat</h3>
-    <input id="chat-from" placeholder="from (seller id)" />
-    <input id="chat-to" placeholder="to (user id)" />
-    <input id="chat-text" placeholder="message" />
-    <button onclick="chatSend()">Send</button>
-    <button onclick="chatThread()">Load Thread</button>
-    <pre id="chatOut"></pre>
-  </div>
-
-  <div class="row">
-    <h3>Upload Images (MQ stub)</h3>
-    <input id="up-seller" placeholder="seller id" />
-    <input id="up-listing" placeholder="listing id (optional)" />
-    <textarea id="up-images" rows="4" placeholder='[{"name":"sofa.jpg","url":"https://example.com/sofa.jpg"}]'></textarea>
-    <button onclick="uploadImages()">Upload</button>
-    <input id="up-job" placeholder="job id" />
-    <button onclick="uploadStatus()">Status</button>
-    <button onclick="uploadResult()">Result</button>
-    <pre id="uploadOut"></pre>
-  </div>
+  <footer>OLEXX — AI classifieds platform · Semantic search · Fraud protection · Multi-region</footer>
 
   <script>
-    const api = new OlexxClient(location.origin);
-    async function upsertProfile() {
-      const id = document.getElementById("p-id").value.trim();
-      const name = document.getElementById("p-name").value;
-      const bio = document.getElementById("p-bio").value;
-      const out = await api.upsertProfile({ id, name, bio });
-      document.getElementById("profileOut").textContent = JSON.stringify(out, null, 2);
-    }
-    async function addComment() {
-      const sellerId = document.getElementById("c-seller").value.trim();
-      const rating = Number(document.getElementById("c-rating").value);
-      const text = document.getElementById("c-text").value;
-      const authorId = document.getElementById("c-author").value || undefined;
-      const authorName = document.getElementById("c-author-name").value || undefined;
-      const out = await api.addComment(sellerId, rating, text, authorId, authorName);
-      document.getElementById("commentOut").textContent = JSON.stringify(out, null, 2);
-    }
-    async function classify() {
-      const title = document.getElementById("cls-title").value;
-      const out = await api.classify(title);
-      document.getElementById("classifyOut").textContent = JSON.stringify(out, null, 2);
-    }
-    async function indexDoc() {
-      try {
-        const j = JSON.parse(document.getElementById("index-json").value);
-        const out = await api.index(j);
-        document.getElementById("indexOut").textContent = JSON.stringify(out, null, 2);
-      } catch (e) {
-        document.getElementById("indexOut").textContent = e.message;
-      }
-    }
-    async function search() {
-      const text = document.getElementById("q-text").value;
-      const l1 = document.getElementById("q-l1").value || undefined;
-      const l2 = document.getElementById("q-l2").value || undefined;
-      const out = await api.search({ text, l1, l2, page: 1, pageSize: 10 });
-      document.getElementById("searchOut").textContent = JSON.stringify(out, null, 2);
-    }
-    async function quickSearch() {
-      const text = document.getElementById("quick-text").value;
-      const l1 = document.getElementById("quick-l1").value || undefined;
-      const l2 = document.getElementById("quick-l2").value || undefined;
-      const res = await fetch("http://localhost:4000/api/search", {
+    async function runSearch() {
+      const text = document.getElementById("search-text").value;
+      const l1 = document.getElementById("search-l1").value || undefined;
+      const l2 = document.getElementById("search-l2").value || undefined;
+      const pageSize = Number(document.getElementById("search-size").value) || 5;
+      const body = { text, l1, l2, page: 1, pageSize };
+      const res = await fetch("/api/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, l1, l2, page: 1, pageSize: 5 }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
-      document.getElementById("quickOut").textContent = JSON.stringify(data, null, 2);
-      renderQuickResults(data.items || []);
+      document.getElementById("search-json").textContent = JSON.stringify(data, null, 2);
+      renderResults("search-results", data.items || []);
     }
-    function renderQuickResults(items) {
-      const wrap = document.getElementById("quickResults");
+
+    function renderResults(containerId, items) {
+      const wrap = document.getElementById(containerId);
       wrap.innerHTML = "";
       if (!items.length) {
         wrap.innerHTML = "<div class='muted'>No results</div>";
         return;
       }
-      for (const it of items) {
-        const div = document.createElement("div");
-        div.className = "card";
-        div.innerHTML = `
-          <div><strong>${it.title || "Untitled"}</strong></div>
+      const grid = document.createElement("div");
+      grid.className = "grid";
+      items.forEach((it) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <div style="font-weight:700">${it.title || "Untitled"}</div>
           <div class="price">${it.price !== undefined ? it.price : ""}</div>
-          <div class="muted">${it.category?.l1 || ""} ${it.category?.l2 ? "› " + it.category.l2 : ""}</div>
-          <div class="muted">Seller: ${it.seller?.id || "-"} | Rating: ${it.seller?.rating ?? "-"} (${it.seller?.reviews ?? 0} reviews)</div>
+          <div class="muted">${(it.category && it.category.l1) || ""} ${it.category && it.category.l2 ? "› " + it.category.l2 : ""}</div>
+          <div class="muted">Seller: ${(it.seller && it.seller.id) || "-"} · Rating ${(it.seller && it.seller.rating) ?? "-"} (${(it.seller && it.seller.reviews) ?? 0} reviews)</div>
         `;
-        wrap.appendChild(div);
-      }
+        grid.appendChild(card);
+      });
+      wrap.appendChild(grid);
     }
+
+    async function submitAd() {
+      const files = document.getElementById("sell-files").files;
+      let images = 0, videos = 0;
+      for (const f of files) {
+        if (f.type.startsWith("image/")) images++;
+        if (f.type.startsWith("video/")) videos++;
+      }
+      if (videos > 1 || images > 5 || (videos === 1 && images > 0)) {
+        document.getElementById("sell-out").textContent = "Error: max 5 images OR 1 video.";
+        return;
+      }
+      const payload = {
+        title: document.getElementById("sell-title").value,
+        price: Number(document.getElementById("sell-price").value) || null,
+        description: document.getElementById("sell-desc").value,
+        country: document.getElementById("sell-country").value,
+        city: document.getElementById("sell-city").value,
+        category: { l1: document.getElementById("sell-l1").value, l2: document.getElementById("sell-l2").value },
+        mediaCount: { images, videos },
+      };
+      document.getElementById("sell-out").textContent = "Ad drafted (client-side demo):\n" + JSON.stringify(payload, null, 2);
+    }
+
+    function aiSuggest() {
+      document.getElementById("sell-out").textContent = "AI suggestion (demo):\nTitle: Toyota Corolla 2017 Clean\nCategory: Vehicles > Cars for Sale\nEstimated price: 190000 EGP";
+    }
+
+    async function adminMute(val) {
+      const sellerId = document.getElementById("admin-seller").value.trim();
+      const adminEmail = document.getElementById("admin-email").value.trim();
+      const res = await fetch("/api/admin/mute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-email": adminEmail },
+        body: JSON.stringify({ sellerId, value: val }),
+      });
+      const data = await res.json();
+      document.getElementById("admin-out").textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function adminBlock(val) {
+      const sellerId = document.getElementById("admin-seller").value.trim();
+      const adminEmail = document.getElementById("admin-email").value.trim();
+      const res = await fetch("/api/admin/block", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-email": adminEmail },
+        body: JSON.stringify({ sellerId, value: val }),
+      });
+      const data = await res.json();
+      document.getElementById("admin-out").textContent = JSON.stringify(data, null, 2);
+    }
+
     async function chatSend() {
       const from = document.getElementById("chat-from").value.trim();
       const to = document.getElementById("chat-to").value.trim();
       const text = document.getElementById("chat-text").value;
-      const out = await api.chatSend(from, to, text);
-      document.getElementById("chatOut").textContent = JSON.stringify(out, null, 2);
+      const res = await fetch("/api/chat/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ from, to, text }),
+      });
+      const data = await res.json();
+      document.getElementById("chat-out").textContent = JSON.stringify(data, null, 2);
     }
+
     async function chatThread() {
       const a = document.getElementById("chat-from").value.trim();
       const b = document.getElementById("chat-to").value.trim();
-      const out = await api.chatThread(a, b, 50);
-      document.getElementById("chatOut").textContent = JSON.stringify(out, null, 2);
-    }
-    async function uploadImages() {
-      try {
-        const sellerId = document.getElementById("up-seller").value.trim();
-        const listingId = document.getElementById("up-listing").value.trim() || undefined;
-        const images = JSON.parse(document.getElementById("up-images").value);
-        const out = await api.uploadImages(sellerId, listingId, images);
-        document.getElementById("uploadOut").textContent = JSON.stringify(out, null, 2);
-        if (out.jobId) document.getElementById("up-job").value = out.jobId;
-      } catch (e) {
-        document.getElementById("uploadOut").textContent = e.message;
-      }
-    }
-    async function uploadStatus() {
-      const jobId = document.getElementById("up-job").value.trim();
-      const out = await api.uploadStatus(jobId);
-      document.getElementById("uploadOut").textContent = JSON.stringify(out, null, 2);
-    }
-    async function uploadResult() {
-      const jobId = document.getElementById("up-job").value.trim();
-      const out = await api.uploadResult(jobId);
-      document.getElementById("uploadOut").textContent = JSON.stringify(out, null, 2);
+      const res = await fetch(`/api/chat/thread?userA=${encodeURIComponent(a)}&userB=${encodeURIComponent(b)}&limit=20`);
+      const data = await res.json();
+      document.getElementById("chat-out").textContent = JSON.stringify(data, null, 2);
     }
   </script>
 </body>
