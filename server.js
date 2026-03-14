@@ -61,7 +61,11 @@ function isAdmin(req) {
   const h = req.headers || {};
   const e = String(h["x-admin-email"] || "").toLowerCase().trim();
   const superE = String(SUPER_ADMIN_EMAIL || "").toLowerCase().trim();
-  return e && superE && e === superE;
+  const user = getUserFromAuth(req);
+  const tokenEmail = user && user.email ? String(user.email).toLowerCase().trim() : "";
+  const okHeader = e && superE && e === superE;
+  const okBearer = tokenEmail && superE && tokenEmail === superE;
+  return okHeader || okBearer;
 }
 
 const commentLimiter = createLimiter({ windowMs: 60_000, max: 6 });
