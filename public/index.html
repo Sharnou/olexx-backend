@@ -43,7 +43,6 @@
       <a href="#browse">Browse</a>
       <a href="#sell">Sell</a>
       <a href="#admin">Admin</a>
-      <button class="btn" onclick="document.getElementById('sell').scrollIntoView({behavior:'smooth'})">Sell</button>
     </nav>
   </header>
 
@@ -157,19 +156,19 @@
       </div>
       <label>Category</label>
       <div class="two-col">
-        <select id="sell-l1">
-          <option>Vehicles</option>
-          <option>Electronics</option>
-          <option>Properties</option>
-          <option>Home & Garden</option>
+        <select id="sell-l1" onchange="populateL2()">
+          <option value="Vehicles">Vehicles</option>
+          <option value="Electronics">Electronics</option>
+          <option value="Properties">Properties</option>
+          <option value="Home & Garden">Home & Garden</option>
         </select>
-        <input id="sell-l2" placeholder="Cars for Sale, Mobile Phones..." />
+        <select id="sell-l2"></select>
       </div>
       <label>Media (max 5 images or 1 video up to 30s)</label>
       <input id="sell-files" type="file" accept="image/*,video/*" multiple />
       <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
         <button class="btn" onclick="submitAd()">Publish</button>
-        <button class="btn btn-secondary" onclick="aiSuggest()">AI suggest from photos</button>
+        <button class="btn btn-secondary" onclick="aiSuggest()">AI suggest from media</button>
       </div>
       <pre id="sell-out" style="margin-top:10px;"></pre>
     </section>
@@ -229,6 +228,25 @@
 
   <script>
     const searchState = { page: 1 };
+    const taxonomy = {
+      "Vehicles": ["Cars for Sale"],
+      "Electronics": ["Mobile Phones", "Laptops"],
+      "Properties": ["Apartments for Sale"],
+      "Home & Garden": ["Furniture"],
+    };
+
+    function populateL2() {
+      const l1 = document.getElementById("sell-l1").value;
+      const l2Sel = document.getElementById("sell-l2");
+      l2Sel.innerHTML = "";
+      (taxonomy[l1] || []).forEach((opt) => {
+        const o = document.createElement("option");
+        o.value = opt;
+        o.textContent = opt;
+        l2Sel.appendChild(o);
+      });
+    }
+    populateL2();
 
     async function runSearch(pageOverride) {
       if (pageOverride) searchState.page = pageOverride;
@@ -305,7 +323,42 @@
     }
 
     function aiSuggest() {
-      document.getElementById("sell-out").textContent = "AI suggestion (demo):\nTitle: Toyota Corolla 2017 Clean\nCategory: Vehicles > Cars for Sale\nEstimated price: 190000 EGP";
+      const files = document.getElementById("sell-files").files;
+      const name = files.length ? files[0].name.toLowerCase() : "";
+      const titleBox = document.getElementById("sell-title");
+      const l1Sel = document.getElementById("sell-l1");
+      const l2Sel = document.getElementById("sell-l2");
+      const priceBox = document.getElementById("sell-price");
+      const descBox = document.getElementById("sell-desc");
+
+      const brands = ["apple","samsung","dell","hp","lenovo","toyota","bmw","mercedes","honda","kia"];
+      const models = ["corolla","civic","iphone","galaxy","thinkpad","inspiron","macbook"];
+      const colors = ["black","blue","white","red","silver","gray"];
+
+      let brand = brands.find((b) => name.includes(b)) || "Brand";
+      let model = models.find((m) => name.includes(m)) || "Model";
+      let color = colors.find((c) => name.includes(c)) || "Color";
+      let l1 = "Electronics";
+      let l2 = "Mobile Phones";
+      if (["toyota","bmw","mercedes","honda","kia"].some((m) => name.includes(m))) {
+        l1 = "Vehicles"; l2 = "Cars for Sale";
+      } else if (["sofa","chair","table","desk"].some((m) => name.includes(m))) {
+        l1 = "Home & Garden"; l2 = "Furniture";
+      } else if (name.includes("apartment") || name.includes("flat")) {
+        l1 = "Properties"; l2 = "Apartments for Sale";
+      }
+
+      l1Sel.value = l1;
+      populateL2();
+      l2Sel.value = l2;
+
+      const guessTitle = `${brand.toUpperCase()} ${model} ${color}`;
+      titleBox.value = guessTitle;
+      descBox.value = `Auto-detected: ${brand} ${model} in ${color}. Please add condition, mileage/usage, and accessories.`;
+      if (!priceBox.value) priceBox.value = l1 === "Vehicles" ? 200000 : 15000;
+
+      document.getElementById("sell-out").textContent =
+        "AI suggestion (stub): filled title/category/description from media names.\nEdit before publishing.";
     }
 
     async function adminMute(val) {
