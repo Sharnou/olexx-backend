@@ -59,6 +59,18 @@
   </div>
 
   <div class="row">
+    <h3>Quick Search (fetch demo)</h3>
+    <label>Keyword</label>
+    <input id="quick-text" placeholder="e.g., iphone" value="iphone" />
+    <label>L1</label>
+    <input id="quick-l1" placeholder="e.g., Electronics" value="Electronics" />
+    <label>L2</label>
+    <input id="quick-l2" placeholder="e.g., Mobile Phones" value="Mobile Phones" />
+    <button onclick="quickSearch()">Run Quick Search</button>
+    <pre id="quickOut"></pre>
+  </div>
+
+  <div class="row">
     <h3>Chat</h3>
     <input id="chat-from" placeholder="from (seller id)" />
     <input id="chat-to" placeholder="to (user id)" />
@@ -118,6 +130,18 @@
       const l2 = document.getElementById("q-l2").value || undefined;
       const out = await api.search({ text, l1, l2, page: 1, pageSize: 10 });
       document.getElementById("searchOut").textContent = JSON.stringify(out, null, 2);
+    }
+    async function quickSearch() {
+      const text = document.getElementById("quick-text").value;
+      const l1 = document.getElementById("quick-l1").value || undefined;
+      const l2 = document.getElementById("quick-l2").value || undefined;
+      const res = await fetch("http://localhost:4000/api/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, l1, l2, page: 1, pageSize: 5 }),
+      });
+      const data = await res.json();
+      document.getElementById("quickOut").textContent = JSON.stringify(data, null, 2);
     }
     async function chatSend() {
       const from = document.getElementById("chat-from").value.trim();
