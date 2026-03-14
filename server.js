@@ -230,6 +230,10 @@ const server = http.createServer(async (req, res) => {
     if (!doc) return json(res, 404, { error: "not found" });
     const hdrCountry = req.headers["x-country"] ? String(req.headers["x-country"]).trim() : null;
     if (hdrCountry && doc.country && doc.country !== hdrCountry && !isAdmin(req)) return json(res, 403, { error: "cross_country_blocked" });
+    if (hdrCountry && doc.location && doc.location.district && req.headers["x-district"]) {
+      const hdrDistrict = String(req.headers["x-district"]).trim();
+      if (doc.location.district !== hdrDistrict && !isAdmin(req)) return json(res, 403, { error: "cross_district_blocked" });
+    }
     return json(res, 200, doc);
   }
   if (method === "PUT" && parsed.pathname === "/api/listings") {
@@ -438,14 +442,6 @@ const server = http.createServer(async (req, res) => {
     for (const d of docs || []) {
       if (d.city) citySet.add(d.city);
       if (d.location && d.location.district) districtSet.add(`${d.city || "city"}/${d.location.district}`);
-    }
-    for (const c of citySet) urls.push({ loc: `/city/${encodeURIComponent(c)}`, lastmod: now });
-    for (const cd of districtSet) urls.push({ loc: `/city/${encodeURIComponent(cd)}`, lastmod: now });
-    const citySet = new Set();
-    const districtSet = new Set();
-    for (const d of docs || []) {
-      if (d.city) citySet.add(d.city);
-      if (d.location && d.location.district) districtSet.add(`${d.city || "city"}/${d.location.district}`);
       urls.push({
         loc: `/listing/${encodeURIComponent(d.id)}`,
         lastmod: d.createdAt ? new Date(d.createdAt).toISOString() : now,
@@ -453,6 +449,8 @@ const server = http.createServer(async (req, res) => {
     }
     for (const c of citySet) urls.push({ loc: `/city/${encodeURIComponent(c)}`, lastmod: now });
     for (const cd of districtSet) urls.push({ loc: `/city/${encodeURIComponent(cd)}`, lastmod: now });
+    const popularSearches = ["iphone", "corolla", "ps5", "lenovo laptop", "smart tv"];
+    popularSearches.forEach((q) => urls.push({ loc: `/search?q=${encodeURIComponent(q)}`, lastmod: now }));
     const base = req.headers["x-external-base"] || "http://localhost:3000";
     const xml =
       `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
