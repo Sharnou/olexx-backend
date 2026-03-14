@@ -2,6 +2,8 @@
 
 Small HTTP backend for classifieds-style listings with an in-memory search index and optional integrations (Elasticsearch, RabbitMQ workers, AWS S3 presigned uploads).
 
+![CI](https://github.com/Sharnou/olexx-backend/actions/workflows/ci.yml/badge.svg?branch=main)
+
 ## Requirements
 - Node.js 18+
 - Optional services depending on features you enable:
