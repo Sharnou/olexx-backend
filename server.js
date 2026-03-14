@@ -204,6 +204,8 @@ const server = http.createServer(async (req, res) => {
     if (!u) return json(res, 401, { error: "unauthorized" });
     const body = await parseBody(req);
     body.seller = Object.assign({}, body.seller || {}, { id: u.id });
+    const hdrCountry = req.headers["x-country"] ? String(req.headers["x-country"]).trim() : null;
+    if (hdrCountry) body.country = hdrCountry;
     const id = await SearchAdapter.indexDoc(body);
     try {
       const doc = InMemory.getDoc(id);
@@ -229,6 +231,10 @@ const server = http.createServer(async (req, res) => {
     if (!current) return json(res, 404, { error: "not found" });
     if (!current.seller || String(current.seller.id || "") !== String(u.id)) return json(res, 403, { error: "forbidden" });
     const merged = Object.assign({}, current, body, { id });
+    const hdrCountry = req.headers["x-country"] ? String(req.headers["x-country"]).trim() : null;
+    const mergedCountry = merged.country || current.country || hdrCountry || null;
+    if (hdrCountry && mergedCountry && mergedCountry !== hdrCountry) return json(res, 403, { error: "cross_country_blocked" });
+    merged.country = mergedCountry;
     await SearchAdapter.indexDoc(merged);
     return json(res, 200, { ok: true });
   }
@@ -240,6 +246,8 @@ const server = http.createServer(async (req, res) => {
     const current = InMemory.getDoc(id);
     if (!current) return json(res, 404, { error: "not found" });
     if (!current.seller || String(current.seller.id || "") !== String(u.id)) return json(res, 403, { error: "forbidden" });
+    const hdrCountry = req.headers["x-country"] ? String(req.headers["x-country"]).trim() : null;
+    if (hdrCountry && current.country && current.country !== hdrCountry) return json(res, 403, { error: "cross_country_blocked" });
     const ok = InMemory.deleteDoc(id);
     return json(res, 200, { ok });
   }
@@ -375,6 +383,7 @@ const server = http.createServer(async (req, res) => {
       }
       body.country = hdrCountry;
     }
+    // deny contact search by other countries
     const result = await SearchAdapter.search(body || {});
     const cacheHit = result && result.meta && result.meta.cacheHit ? "HIT" : "MISS";
     const took = result && result.meta && result.meta.tookMs ? String(result.meta.tookMs) : "0";
@@ -387,18 +396,30 @@ const server = http.createServer(async (req, res) => {
   if (method === "GET" && parsed.pathname === "/sitemap.xml") {
     const docs = InMemory.listDocs ? InMemory.listDocs() : [];
     const urls = [];
-    urls.push({ loc: "/", lastmod: new Date().toISOString() });
-    urls.push({ loc: "/admin.html", lastmod: new Date().toISOString() });
+    const now = new Date().toISOString();
+    urls.push({ loc: "/", lastmod: now });
+    urls.push({ loc: "/admin.html", lastmod: now });
+    const popular = ["/popular/electronics", "/popular/cars", "/popular/properties"];
+    popular.forEach((p) => urls.push({ loc: p, lastmod: now }));
     for (const group of TAXONOMY) {
-      urls.push({ loc: `/category/${encodeURIComponent(group.l1)}`, lastmod: new Date().toISOString() });
+      urls.push({ loc: `/category/${encodeURIComponent(group.l1)}`, lastmod: now });
       for (const cat of group.categories) {
-        urls.push({ loc: `/category/${encodeURIComponent(group.l1)}/${encodeURIComponent(cat.l2)}`, lastmod: new Date().toISOString() });
+        urls.push({ loc: `/category/${encodeURIComponent(group.l1)}/${encodeURIComponent(cat.l2)}`, lastmod: now });
       }
     }
+    // location layers (city/district) derived from listings
+    const citySet = new Set();
+    const districtSet = new Set();
+    for (const d of docs || []) {
+      if (d.city) citySet.add(d.city);
+      if (d.location && d.location.district) districtSet.add(`${d.city || "city"}/${d.location.district}`);
+    }
+    for (const c of citySet) urls.push({ loc: `/city/${encodeURIComponent(c)}`, lastmod: now });
+    for (const cd of districtSet) urls.push({ loc: `/city/${encodeURIComponent(cd)}`, lastmod: now });
     for (const d of docs || []) {
       urls.push({
         loc: `/listing/${encodeURIComponent(d.id)}`,
-        lastmod: d.createdAt ? new Date(d.createdAt).toISOString() : new Date().toISOString(),
+        lastmod: d.createdAt ? new Date(d.createdAt).toISOString() : now,
       });
     }
     const base = req.headers["x-external-base"] || "http://localhost:3000";
@@ -483,6 +504,11 @@ const server = http.createServer(async (req, res) => {
   if (method === "GET" && parsed.pathname === "/api/comments") {
     const sellerId = String(parsed.query.sellerId || "");
     if (!sellerId) return json(res, 400, { error: "sellerId required" });
+    const hdrCountry = req.headers["x-country"] ? String(req.headers["x-country"]).trim() : null;
+    if (hdrCountry) {
+      const p = Profiles.getProfile(sellerId);
+      if (p && p.country && p.country !== hdrCountry) return json(res, 403, { error: "cross_country_blocked" });
+    }
     const page = parsed.query.page ? Number(parsed.query.page) : 1;
     const pageSize = parsed.query.pageSize ? Number(parsed.query.pageSize) : 20;
     const list = Profiles.listComments(sellerId, page, pageSize);
@@ -565,6 +591,9 @@ const server = http.createServer(async (req, res) => {
       if (body.from) {
         if (!authedUser || String(authedUser.id) !== String(body.from)) return json(res, 401, { error: "token_mismatch" });
       }
+      const hdrCountry = req.headers["x-country"] ? String(req.headers["x-country"]).trim() : null;
+      if (hdrCountry && body.country && String(body.country) !== hdrCountry) return json(res, 403, { error: "cross_country_blocked" });
+      if (hdrCountry) body.country = hdrCountry;
       const msg = Chat.send({ from: body.from || (authedUser && authedUser.id), to: body.to, text: body.text, channel: body.channel, whatsapp: body.whatsapp, audioUrl: body.audioUrl });
       return json(res, 200, msg);
     } catch (e) {
@@ -582,6 +611,14 @@ const server = http.createServer(async (req, res) => {
       const limit = parsed.query.limit ? Number(parsed.query.limit) : 50;
       if (!userA || !userB) return json(res, 400, { error: "userA and userB required" });
       if (![userA, userB].includes(String(authed.id)) && !isAdmin(req)) return json(res, 403, { error: "forbidden" });
+      const hdrCountry = req.headers["x-country"] ? String(req.headers["x-country"]).trim() : null;
+      if (hdrCountry) {
+        const a = Profiles.getProfile(userA);
+        const b = Profiles.getProfile(userB);
+        const aC = a && a.country;
+        const bC = b && b.country;
+        if ((aC && aC !== hdrCountry) || (bC && bC !== hdrCountry)) return json(res, 403, { error: "cross_country_blocked" });
+      }
       const items = Chat.thread({ userA, userB, limit });
       return json(res, 200, { items });
     } catch (e) {
