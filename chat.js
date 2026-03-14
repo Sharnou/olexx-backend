@@ -4,6 +4,7 @@ const Profiles = require("./profiles");
 const Notifications = require("./notifications");
 const Whatsapp = require("./whatsapp");
 const Moderation = require("./moderation");
+const ModerationQueue = require("./moderation-queue");
 const file = path.join(__dirname, "data-chat.json");
 
 let messages = [];
@@ -31,6 +32,7 @@ function send({ from, to, text, channel = "text", whatsapp, audioUrl }) {
     const mod = Moderation.checkContent(text);
     if (mod.flagged) {
       if (sender) Profiles.setBlocked(sender, true); // auto block fake/spam/sexual senders
+      ModerationQueue.add("chat_flagged", { from: sender || wa, to: recipient, channel: mode, reason: mod.reason || "flagged" });
       const e = new Error(`auto_blocked_${mod.reason}`);
       e.code = "auto_blocked";
       throw e;

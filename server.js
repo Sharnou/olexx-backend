@@ -392,12 +392,11 @@ const server = http.createServer(async (req, res) => {
   if (method === "POST" && parsed.pathname === "/api/search") {
     const body = await parseBody(req);
     const hdrCountry = req.headers["x-country"] ? String(req.headers["x-country"]).trim() : null;
-    if (hdrCountry) {
-      if (body.country && String(body.country).trim() !== hdrCountry) {
-        return json(res, 403, { error: "cross_country_blocked" });
-      }
-      body.country = hdrCountry;
+    if (!hdrCountry) return json(res, 401, { error: "country_required" });
+    if (body.country && String(body.country).trim() !== hdrCountry) {
+      return json(res, 403, { error: "cross_country_blocked" });
     }
+    body.country = hdrCountry;
     // deny contact search by other countries
     const result = await SearchAdapter.search(body || {});
     const cacheHit = result && result.meta && result.meta.cacheHit ? "HIT" : "MISS";

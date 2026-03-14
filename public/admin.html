@@ -73,6 +73,8 @@
           <option value="rejected">Reject</option>
         </select>
       </div>
+      <label>Reason (optional)</label>
+      <input id="mod-reason" placeholder="reason" />
       <button class="btn btn-secondary" style="margin-top:8px;" onclick="resolveMod()">Apply</button>
       <pre id="mod-out"></pre>
     </div>
@@ -144,11 +146,12 @@
     async function resolveMod() {
       const id = document.getElementById("mod-id").value.trim();
       const status = document.getElementById("mod-status").value;
+      const reason = document.getElementById("mod-reason").value.trim();
       if (!id) return;
       await fetch("/api/admin/moderation/resolve", {
         method: "POST",
         headers: Object.assign({ "Content-Type": "application/json" }, adminHeaders()),
-        body: JSON.stringify({ id, status }),
+        body: JSON.stringify({ id, status, reason }),
       });
       loadQueue();
     }

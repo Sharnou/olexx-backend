@@ -622,6 +622,7 @@
     })();
 
     let originalTexts = null;
+    let translationCache = JSON.parse(localStorage.getItem("olexx-trans-cache") || "{}");
     async function translatePage() {
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
         acceptNode: (n) => {
@@ -635,6 +636,11 @@
       const texts = nodes.map((n) => n.nodeValue.trim()).slice(0, 200); // limit to avoid huge payload
       if (!texts.length) return;
       originalTexts = nodes.map((n) => n.nodeValue);
+      if (translationCache[userLang] && translationCache[userLang].length === texts.length) {
+        translationCache[userLang].forEach((t, i) => (nodes[i].nodeValue = t));
+        document.getElementById("trans-msg").textContent = "Translation from cache.";
+        return;
+      }
       const res = await fetch("/api/ai/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -645,6 +651,8 @@
         data.texts.forEach((t, i) => {
           nodes[i].nodeValue = t;
         });
+        translationCache[userLang] = data.texts;
+        localStorage.setItem("olexx-trans-cache", JSON.stringify(translationCache));
         document.getElementById("trans-msg").textContent = "Translated via AI.";
       } else {
         document.getElementById("trans-msg").textContent = "Translation unavailable.";
