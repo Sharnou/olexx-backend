@@ -412,6 +412,20 @@ const server = http.createServer(async (req, res) => {
     urls.push({ loc: "/admin.html", lastmod: now });
     const popular = ["/popular/electronics", "/popular/cars", "/popular/properties"];
     popular.forEach((p) => urls.push({ loc: p, lastmod: now }));
+    // electronics deep subcategories
+    const electronicsSubs = [
+      "computers/laptops",
+      "computers/desktops",
+      "computers/accessories",
+      "tv-audio/video",
+      "gaming/consoles",
+      "gaming/games-accessories",
+      "cameras/imaging",
+      "home-appliances/large",
+      "home-appliances/climate",
+      "home-appliances/kitchen",
+    ];
+    electronicsSubs.forEach((p) => urls.push({ loc: `/category/Electronics/${p}`, lastmod: now }));
     for (const group of TAXONOMY) {
       urls.push({ loc: `/category/${encodeURIComponent(group.l1)}`, lastmod: now });
       for (const cat of group.categories) {

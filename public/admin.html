@@ -21,6 +21,8 @@
   <header>
     <div style="font-weight:800;font-size:18px;">OLEXX Admin</div>
     <a href="/" style="color:#fff; text-decoration:none;">← Back to site</a>
+    <span id="admin-user" style="margin-left:12px;font-size:12px;"></span>
+    <button class="btn btn-secondary" id="admin-logout" style="display:none;" onclick="logout()">Logout</button>
   </header>
 
   <div class="container">
@@ -82,8 +84,14 @@
       const data = await res.json();
       document.getElementById("health-out").textContent = JSON.stringify(data, null, 2);
     }
+    function authToken() {
+      return localStorage.getItem("olexxToken");
+    }
     function adminHeaders() {
-      return { "x-admin-email": document.getElementById("admin-email").value.trim() };
+      const base = { "x-admin-email": document.getElementById("admin-email").value.trim() };
+      const t = authToken();
+      if (t) base.Authorization = `Bearer ${t}`;
+      return base;
     }
     async function whoami() {
       const res = await fetch("/api/admin/me", { headers: adminHeaders() });
@@ -143,6 +151,24 @@
         body: JSON.stringify({ id, status }),
       });
       loadQueue();
+    }
+
+    // show current user from token
+    (async () => {
+      const t = authToken();
+      if (!t) return;
+      const res = await fetch("/api/auth/me", { headers: { Authorization: `Bearer ${t}` } });
+      if (res.ok) {
+        const data = await res.json();
+        document.getElementById("admin-user").textContent = `Logged in as ${data.user?.email || data.user?.id || ""}`;
+        document.getElementById("admin-logout").style.display = "inline-block";
+      }
+    })();
+
+    function logout() {
+      localStorage.removeItem("olexxToken");
+      document.getElementById("admin-user").textContent = "";
+      document.getElementById("admin-logout").style.display = "none";
     }
   </script>
 </body>
