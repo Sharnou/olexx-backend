@@ -607,6 +607,11 @@ const server = http.createServer(async (req, res) => {
       const hdrCountry = req.headers["x-country"] ? String(req.headers["x-country"]).trim() : null;
       if (hdrCountry && body.country && String(body.country) !== hdrCountry) return json(res, 403, { error: "cross_country_blocked" });
       if (hdrCountry) body.country = hdrCountry;
+      // check recipient country if profile has one
+      if (hdrCountry && body.to) {
+        const p = Profiles.getProfile(body.to);
+        if (p && p.country && p.country !== hdrCountry) return json(res, 403, { error: "cross_country_blocked" });
+      }
       const msg = Chat.send({ from: body.from || (authedUser && authedUser.id), to: body.to, text: body.text, channel: body.channel, whatsapp: body.whatsapp, audioUrl: body.audioUrl });
       return json(res, 200, msg);
     } catch (e) {

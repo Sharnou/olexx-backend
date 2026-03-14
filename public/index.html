@@ -339,6 +339,7 @@
           <div class="muted">${(it.category && it.category.l1) || ""} ${it.category && it.category.l2 ? "› " + it.category.l2 : ""}</div>
           <div class="muted">Location: ${(it.city || "-")}, ${(it.country || "-")}</div>
           <div class="muted">Seller: ${(it.seller && it.seller.id) || "-"} · Rating ${(it.seller && it.seller.rating) ?? "-"} (${(it.seller && it.seller.reviews) ?? 0} reviews)</div>
+          <button class="btn" style="margin-top:8px;" onclick="openChat('${it.seller?.id || ""}')">Chat with seller</button>
         `;
         grid.appendChild(card);
       });
@@ -465,6 +466,12 @@
       const res = await fetch(`/api/chat/thread?userA=${encodeURIComponent(a)}&userB=${encodeURIComponent(b)}&limit=20`);
       const data = await res.json();
       document.getElementById("chat-out").textContent = JSON.stringify(data, null, 2);
+    }
+
+    function openChat(sellerId) {
+      if (!sellerId) return;
+      document.getElementById("chat-to").value = sellerId;
+      document.getElementById("chat").scrollIntoView({ behavior: "smooth" });
     }
 
     function renderChatLinks(wa, channel) {
