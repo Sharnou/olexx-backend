@@ -479,7 +479,7 @@ const server = http.createServer(async (req, res) => {
   if (method === "POST" && parsed.pathname === "/api/chat/send") {
     try {
       const body = await parseBody(req);
-      const msg = Chat.send({ from: body.from, to: body.to, text: body.text });
+      const msg = Chat.send({ from: body.from, to: body.to, text: body.text, channel: body.channel, whatsapp: body.whatsapp });
       return json(res, 200, msg);
     } catch (e) {
       if (e && e.code && (e.code === "sender_blocked" || e.code === "sender_muted")) {

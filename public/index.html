@@ -189,6 +189,14 @@
             <input id="chat-to" placeholder="userB" />
           </div>
         </div>
+        <label>WhatsApp number (optional)</label>
+        <input id="chat-wa" placeholder="+20123456789" />
+        <label>Channel</label>
+        <select id="chat-channel">
+          <option value="text">Text</option>
+          <option value="voice">Voice (mic)</option>
+          <option value="whatsapp_voice">WhatsApp voice call</option>
+        </select>
         <label>Message</label>
         <input id="chat-text" placeholder="Hi there" />
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
@@ -300,10 +308,12 @@
       const from = document.getElementById("chat-from").value.trim();
       const to = document.getElementById("chat-to").value.trim();
       const text = document.getElementById("chat-text").value;
+      const whatsapp = document.getElementById("chat-wa").value.trim();
+      const channel = document.getElementById("chat-channel").value;
       const res = await fetch("/api/chat/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ from, to, text }),
+        body: JSON.stringify({ from, to, text, whatsapp, channel }),
       });
       const data = await res.json();
       document.getElementById("chat-out").textContent = JSON.stringify(data, null, 2);

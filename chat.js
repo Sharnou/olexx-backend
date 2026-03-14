@@ -13,23 +13,30 @@ function canSend(senderId) {
   return true;
 }
 
-function send({ from, to, text }) {
+function send({ from, to, text, channel = "text", whatsapp }) {
   const sender = String(from || "").trim();
   const recipient = String(to || "").trim();
-  if (!sender || !recipient) throw new Error("from/to required");
-  if (!text) throw new Error("text required");
-  if (!canSend(sender)) {
-    const p = Profiles.getProfile(sender) || {};
-    const err = p.blocked ? "sender_blocked" : "sender_muted";
-    const e = new Error(err);
-    e.code = err;
-    throw e;
+  const wa = String(whatsapp || "").trim();
+  if (!recipient) throw new Error("to required");
+  if (!sender && !wa) throw new Error("from or whatsapp required");
+  const mode = ["text", "voice", "whatsapp_voice"].includes(channel) ? channel : "text";
+  if (mode === "text" && !text) throw new Error("text required");
+  if (sender) {
+    if (!canSend(sender)) {
+      const p = Profiles.getProfile(sender) || {};
+      const err = p.blocked ? "sender_blocked" : "sender_muted";
+      const e = new Error(err);
+      e.code = err;
+      throw e;
+    }
   }
   const msg = {
     id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    from: sender,
+    from: sender || wa,
     to: recipient,
-    text: String(text),
+    text: text ? String(text) : null,
+    channel: mode,
+    fromWhatsapp: wa || null,
     at: new Date().toISOString(),
   };
   messages.push(msg);

@@ -29,7 +29,7 @@ Lightweight classifieds backend with in-memory search, optional Elasticsearch/Ra
 ## Handy API snippets (PowerShell)
 - Admin check: `Invoke-RestMethod -Headers @{'x-admin-email'='Ahmed_sharnou@yahoo.com'} -Uri "http://localhost:4000/api/admin/me"`
 - Mute/block seller (POST): `/api/admin/mute` or `/api/admin/block` with JSON `{ sellerId, value }` and `x-admin-email` header.
-- Chat send/thread: `/api/chat/send` (POST `{from,to,text}`) and `/api/chat/thread?userA=&userB=&limit=`.
+- Chat send/thread: `/api/chat/send` (POST `{from?, whatsapp?, to, text?, channel: "text"|"voice"|"whatsapp_voice"}`) and `/api/chat/thread?userA=&userB=&limit=`.
 - Search: `/api/search` POST `{ text, l1, l2?, country?, city?, page, pageSize }`.
 
 ## Persisting the in-memory index
