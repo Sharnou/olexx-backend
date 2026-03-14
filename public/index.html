@@ -43,6 +43,7 @@
       <a href="#browse">Browse</a>
       <a href="#sell">Sell</a>
       <a href="#admin">Admin</a>
+      <a href="#auth">Login / Register</a>
     </nav>
   </header>
 
@@ -322,43 +323,54 @@
       document.getElementById("sell-out").textContent = "Ad drafted (client-side demo):\n" + JSON.stringify(payload, null, 2);
     }
 
-    function aiSuggest() {
+    async function aiSuggest() {
       const files = document.getElementById("sell-files").files;
-      const name = files.length ? files[0].name.toLowerCase() : "";
       const titleBox = document.getElementById("sell-title");
+      const descBox = document.getElementById("sell-desc");
       const l1Sel = document.getElementById("sell-l1");
       const l2Sel = document.getElementById("sell-l2");
       const priceBox = document.getElementById("sell-price");
-      const descBox = document.getElementById("sell-desc");
-
-      const brands = ["apple","samsung","dell","hp","lenovo","toyota","bmw","mercedes","honda","kia"];
-      const models = ["corolla","civic","iphone","galaxy","thinkpad","inspiron","macbook"];
-      const colors = ["black","blue","white","red","silver","gray"];
-
-      let brand = brands.find((b) => name.includes(b)) || "Brand";
-      let model = models.find((m) => name.includes(m)) || "Model";
-      let color = colors.find((c) => name.includes(c)) || "Color";
-      let l1 = "Electronics";
-      let l2 = "Mobile Phones";
-      if (["toyota","bmw","mercedes","honda","kia"].some((m) => name.includes(m))) {
-        l1 = "Vehicles"; l2 = "Cars for Sale";
-      } else if (["sofa","chair","table","desk"].some((m) => name.includes(m))) {
-        l1 = "Home & Garden"; l2 = "Furniture";
-      } else if (name.includes("apartment") || name.includes("flat")) {
-        l1 = "Properties"; l2 = "Apartments for Sale";
+      if (!files.length) {
+        document.getElementById("sell-out").textContent = "Add an image or video first.";
+        return;
       }
+      const file = files[0];
+      if (!file.type.startsWith("image/")) {
+        document.getElementById("sell-out").textContent = "Vision AI only supports images for now.";
+        return;
+      }
+      const b64 = await fileToDataUrl(file);
+      document.getElementById("sell-out").textContent = "AI analyzing media...";
+      const res = await fetch("/api/ai/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: titleBox.value, description: descBox.value, image: b64 }),
+      });
+      const data = await res.json();
+      if (data.l1) {
+        l1Sel.value = data.l1;
+        populateL2();
+        if (data.l2) l2Sel.value = data.l2;
+      }
+      if (data.brand || data.model) {
+        titleBox.value = [data.brand, data.model].filter(Boolean).join(" ");
+      }
+      if (data.suggestion) descBox.value = data.suggestion;
+      if (data.priceHint && !priceBox.value) priceBox.value = data.priceHint;
+      if (data.risk === "blocked") {
+        document.getElementById("sell-out").textContent = "AI flagged this media as unsafe/spam. Listing blocked.";
+        return;
+      }
+      document.getElementById("sell-out").textContent = "AI suggestion applied. Please review before publishing.";
+    }
 
-      l1Sel.value = l1;
-      populateL2();
-      l2Sel.value = l2;
-
-      const guessTitle = `${brand.toUpperCase()} ${model} ${color}`;
-      titleBox.value = guessTitle;
-      descBox.value = `Auto-detected: ${brand} ${model} in ${color}. Please add condition, mileage/usage, and accessories.`;
-      if (!priceBox.value) priceBox.value = l1 === "Vehicles" ? 200000 : 15000;
-
-      document.getElementById("sell-out").textContent =
-        "AI suggestion (stub): filled title/category/description from media names.\nEdit before publishing.";
+    function fileToDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
     }
 
     async function adminMute(val) {

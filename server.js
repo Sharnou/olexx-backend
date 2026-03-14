@@ -17,6 +17,7 @@ const ImageJobs = require("./image-jobs");
 const Auth = require("./auth");
 const Saved = require("./saved");
 const Notes = require("./notifications");
+const AI = require("./ai");
 const { S3_UPLOAD_BASE, AWS_REGION, S3_BUCKET } = require("./config");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 
@@ -497,6 +498,20 @@ const server = http.createServer(async (req, res) => {
     if (!userA || !userB) return json(res, 400, { error: "userA and userB required" });
     const items = Chat.thread({ userA, userB, limit });
     return json(res, 200, { items });
+  }
+  if (method === "POST" && parsed.pathname === "/api/ai/suggest") {
+    try {
+      const body = await parseBody(req);
+      const dataUrl = String(body.image || "");
+      let b64 = null;
+      if (dataUrl.startsWith("data:image/")) {
+        b64 = dataUrl.split(",")[1];
+      }
+      const ai = await AI.suggestFromMedia({ title: body.title, description: body.description, imageBase64: b64 });
+      return json(res, 200, ai);
+    } catch (e) {
+      return json(res, 400, { error: e.message || "bad request" });
+    }
   }
   if (method === "POST" && parsed.pathname === "/api/chat/upload-voice") {
     try {
