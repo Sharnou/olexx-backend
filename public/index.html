@@ -105,9 +105,21 @@
             <label>Page size</label>
             <input id="search-size" type="number" value="5" min="1" max="50" />
           </div>
-          <div></div>
+          <div>
+            <label>Sort</label>
+            <select id="search-sort">
+              <option value="">Relevance</option>
+              <option value="newest">Newest</option>
+              <option value="cheapest">Cheapest</option>
+            </select>
+          </div>
         </div>
-        <button class="btn" style="width:100%; margin-top:12px;" onclick="runSearch()">Search</button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+          <button class="btn" style="flex:1;" onclick="runSearch(1)">Search</button>
+          <button class="btn btn-secondary" onclick="page(-1)">Prev</button>
+          <button class="btn btn-secondary" onclick="page(1)">Next</button>
+          <span class="muted" id="search-page-label" style="align-self:center;">Page 1</span>
+        </div>
         <div id="search-results" class="results"></div>
         <pre id="search-json" style="margin-top:10px; max-height:180px;"></pre>
       </div>
@@ -194,15 +206,18 @@
         <label>Channel</label>
         <select id="chat-channel">
           <option value="text">Text</option>
-          <option value="voice">Voice (mic)</option>
+          <option value="voice">Voice (recording)</option>
           <option value="whatsapp_voice">WhatsApp voice call</option>
         </select>
-        <label>Message</label>
+        <label>Message (or leave blank if sending voice)</label>
         <input id="chat-text" placeholder="Hi there" />
+        <label>Voice URL (for voice channel)</label>
+        <input id="chat-audio" placeholder="https://example.com/voice.ogg" />
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
           <button class="btn" onclick="chatSend()">Send</button>
           <button class="btn btn-secondary" onclick="chatThread()">Load Thread</button>
         </div>
+        <div id="chat-links" class="muted" style="margin-top:6px;"></div>
         <pre id="chat-out" style="margin-top:10px;"></pre>
       </div>
     </section>
@@ -211,14 +226,18 @@
   <footer>OLEXX — AI classifieds platform · Semantic search · Fraud protection · Multi-region</footer>
 
   <script>
-    async function runSearch() {
+    const searchState = { page: 1 };
+
+    async function runSearch(pageOverride) {
+      if (pageOverride) searchState.page = pageOverride;
       const text = document.getElementById("search-text").value;
       const l1 = document.getElementById("search-l1").value || undefined;
       const l2 = document.getElementById("search-l2").value || undefined;
       const country = document.getElementById("search-country").value || undefined;
       const city = document.getElementById("search-city").value || undefined;
       const pageSize = Number(document.getElementById("search-size").value) || 5;
-      const body = { text, l1, l2, country, city, page: 1, pageSize };
+      const sort = document.getElementById("search-sort").value || undefined;
+      const body = { text, l1, l2, country, city, sort, page: searchState.page, pageSize };
       const res = await fetch("/api/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -227,6 +246,13 @@
       const data = await res.json();
       document.getElementById("search-json").textContent = JSON.stringify(data, null, 2);
       renderResults("search-results", data.items || []);
+      searchState.page = data.page || searchState.page;
+      document.getElementById("search-page-label").textContent = `Page ${searchState.page}`;
+    }
+
+    function page(delta) {
+      const next = Math.max(1, (searchState.page || 1) + delta);
+      runSearch(next);
     }
 
     function renderResults(containerId, items) {
@@ -310,13 +336,15 @@
       const text = document.getElementById("chat-text").value;
       const whatsapp = document.getElementById("chat-wa").value.trim();
       const channel = document.getElementById("chat-channel").value;
+      const audioUrl = document.getElementById("chat-audio").value.trim();
       const res = await fetch("/api/chat/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ from, to, text, whatsapp, channel }),
+        body: JSON.stringify({ from, to, text, whatsapp, channel, audioUrl }),
       });
       const data = await res.json();
       document.getElementById("chat-out").textContent = JSON.stringify(data, null, 2);
+      renderChatLinks(whatsapp, channel);
     }
 
     async function chatThread() {
@@ -325,6 +353,16 @@
       const res = await fetch(`/api/chat/thread?userA=${encodeURIComponent(a)}&userB=${encodeURIComponent(b)}&limit=20`);
       const data = await res.json();
       document.getElementById("chat-out").textContent = JSON.stringify(data, null, 2);
+    }
+
+    function renderChatLinks(wa, channel) {
+      const links = [];
+      if (wa) {
+        links.push(`<a href="https://wa.me/${wa.replace(/[^0-9]/g,'')}" target="_blank">Open WhatsApp chat</a>`);
+        if (channel === "whatsapp_voice") links.push("Initiate WhatsApp voice call via your phone.");
+      }
+      if (channel === "voice") links.push("Voice channel: start mic in app (placeholder UI).");
+      document.getElementById("chat-links").innerHTML = links.join(" · ") || "";
     }
   </script>
 </body>

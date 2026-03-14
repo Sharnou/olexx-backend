@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const Profiles = require("./profiles");
+const Notifications = require("./notifications");
 const file = path.join(__dirname, "data-chat.json");
 
 let messages = [];
@@ -13,7 +14,7 @@ function canSend(senderId) {
   return true;
 }
 
-function send({ from, to, text, channel = "text", whatsapp }) {
+function send({ from, to, text, channel = "text", whatsapp, audioUrl }) {
   const sender = String(from || "").trim();
   const recipient = String(to || "").trim();
   const wa = String(whatsapp || "").trim();
@@ -21,6 +22,8 @@ function send({ from, to, text, channel = "text", whatsapp }) {
   if (!sender && !wa) throw new Error("from or whatsapp required");
   const mode = ["text", "voice", "whatsapp_voice"].includes(channel) ? channel : "text";
   if (mode === "text" && !text) throw new Error("text required");
+  if (mode === "voice" && !audioUrl) throw new Error("audioUrl required for voice");
+  if (mode === "whatsapp_voice" && !wa && !sender) throw new Error("whatsapp number or sender required");
   if (sender) {
     if (!canSend(sender)) {
       const p = Profiles.getProfile(sender) || {};
@@ -37,11 +40,24 @@ function send({ from, to, text, channel = "text", whatsapp }) {
     text: text ? String(text) : null,
     channel: mode,
     fromWhatsapp: wa || null,
+    audioUrl: audioUrl || null,
     at: new Date().toISOString(),
   };
   messages.push(msg);
   persist();
+  notifyRecipient(recipient, msg);
   return msg;
+}
+
+function notifyRecipient(recipientId, msg) {
+  const profile = Profiles.getProfile(recipientId);
+  if (!profile) return;
+  // Always push in-app notification
+  Notifications.push(recipientId, { type: "chat_msg", from: msg.from, channel: msg.channel, at: msg.at });
+  // If profile has whatsapp and channel implies WhatsApp, flag a WhatsApp notification (number not exposed)
+  if (profile.whatsapp && (msg.channel === "whatsapp_voice" || msg.fromWhatsapp)) {
+    Notifications.push(recipientId, { type: "whatsapp_alert", masked: "***", at: msg.at });
+  }
 }
 
 function thread({ userA, userB, limit = 50 }) {

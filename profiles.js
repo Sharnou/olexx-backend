@@ -14,6 +14,7 @@ function upsertProfile(p) {
   const allowedGender = new Set(["male", "female", "pharaoh"]);
   const g = p.gender !== undefined ? String(p.gender).toLowerCase() : (prev.gender || null);
   const gender = allowedGender.has(g) ? g : (g ? null : (prev.gender || null));
+  const whatsapp = p.whatsapp !== undefined ? String(p.whatsapp).trim() : (prev.whatsapp || null);
   const obj = {
     id,
     name: p.name !== undefined ? p.name : prev.name || "",
@@ -21,6 +22,7 @@ function upsertProfile(p) {
     joinDate: p.joinDate || prev.joinDate || new Date().toISOString(),
     avatarUrl: p.avatarUrl !== undefined ? p.avatarUrl : (prev.avatarUrl || null),
     gender: gender || null,
+    whatsapp: whatsapp || null, // private; used for notifications
     avgRating: Number(prev.avgRating || 0),
     reviewCount: Number(prev.reviewCount || 0),
     muted: prev.muted || false,
