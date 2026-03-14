@@ -441,12 +441,18 @@ const server = http.createServer(async (req, res) => {
     }
     for (const c of citySet) urls.push({ loc: `/city/${encodeURIComponent(c)}`, lastmod: now });
     for (const cd of districtSet) urls.push({ loc: `/city/${encodeURIComponent(cd)}`, lastmod: now });
+    const citySet = new Set();
+    const districtSet = new Set();
     for (const d of docs || []) {
+      if (d.city) citySet.add(d.city);
+      if (d.location && d.location.district) districtSet.add(`${d.city || "city"}/${d.location.district}`);
       urls.push({
         loc: `/listing/${encodeURIComponent(d.id)}`,
         lastmod: d.createdAt ? new Date(d.createdAt).toISOString() : now,
       });
     }
+    for (const c of citySet) urls.push({ loc: `/city/${encodeURIComponent(c)}`, lastmod: now });
+    for (const cd of districtSet) urls.push({ loc: `/city/${encodeURIComponent(cd)}`, lastmod: now });
     const base = req.headers["x-external-base"] || "http://localhost:3000";
     const xml =
       `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
