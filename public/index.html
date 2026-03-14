@@ -577,15 +577,27 @@
     })();
 
     async function translatePage() {
-      const text = document.body.innerText.slice(0, 6000);
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode: (n) => {
+          if (!n.nodeValue || !n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+          if (n.parentElement && ["SCRIPT", "STYLE"].includes(n.parentElement.tagName)) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        },
+      });
+      const nodes = [];
+      while (walker.nextNode()) nodes.push(walker.currentNode);
+      const texts = nodes.map((n) => n.nodeValue.trim()).slice(0, 200); // limit to avoid huge payload
+      if (!texts.length) return;
       const res = await fetch("/api/ai/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, to: userLang }),
+        body: JSON.stringify({ texts, to: userLang }),
       });
       const data = await res.json();
-      if (data.text) {
-        document.body.innerText = data.text;
+      if (data.texts && data.texts.length === texts.length) {
+        data.texts.forEach((t, i) => {
+          nodes[i].nodeValue = t;
+        });
         document.getElementById("trans-msg").textContent = "Translated via AI.";
       } else {
         document.getElementById("trans-msg").textContent = "Translation unavailable.";

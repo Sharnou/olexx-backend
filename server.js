@@ -650,9 +650,20 @@ const server = http.createServer(async (req, res) => {
   if (method === "POST" && parsed.pathname === "/api/ai/translate") {
     try {
       const body = await parseBody(req);
-      const out = await AI.translateText(String(body.text || ""), String(body.to || "en"));
-      if (!out.ok) return json(res, 400, { error: out.error || "translation_failed" });
-      return json(res, 200, { text: out.text });
+      const target = String(body.to || "en");
+      if (Array.isArray(body.texts)) {
+        const outs = [];
+        for (const t of body.texts) {
+          const r = await AI.translateText(String(t || ""), target);
+          if (!r.ok) return json(res, 400, { error: r.error || "translation_failed" });
+          outs.push(r.text);
+        }
+        return json(res, 200, { texts: outs });
+      } else {
+        const out = await AI.translateText(String(body.text || ""), target);
+        if (!out.ok) return json(res, 400, { error: out.error || "translation_failed" });
+        return json(res, 200, { text: out.text });
+      }
     } catch (e) {
       return json(res, 400, { error: e.message || "bad request" });
     }
