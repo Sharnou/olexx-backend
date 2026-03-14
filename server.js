@@ -218,7 +218,9 @@ const server = http.createServer(async (req, res) => {
     if (!u) return json(res, 401, { error: "unauthorized" });
     const page = parsed.query.page ? Number(parsed.query.page) : 1;
     const pageSize = parsed.query.pageSize ? Number(parsed.query.pageSize) : 20;
+    const hdrCountry = req.headers["x-country"] ? String(req.headers["x-country"]).trim() : null;
     const out = InMemory.listBySeller(u.id, page, pageSize);
+    if (hdrCountry) out.items = out.items.filter((it) => !it.country || it.country === hdrCountry);
     return json(res, 200, out);
   }
   if (method === "PUT" && parsed.pathname === "/api/listings") {
@@ -479,6 +481,8 @@ const server = http.createServer(async (req, res) => {
     if (!sellerId) return json(res, 400, { error: "sellerId required" });
     const p = Profiles.getProfile(sellerId);
     if (!p) return json(res, 404, { error: "not found" });
+    const hdrCountry = req.headers["x-country"] ? String(req.headers["x-country"]).trim() : null;
+    if (hdrCountry && p.country && p.country !== hdrCountry && !isAdmin(req)) return json(res, 403, { error: "cross_country_blocked" });
     if (!isAdmin(req)) {
       const { muted, blocked, ...rest } = p;
       return json(res, 200, rest);

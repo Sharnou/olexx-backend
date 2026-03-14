@@ -577,7 +577,7 @@
     })();
 
     async function translatePage() {
-      const text = document.querySelector(".hero")?.innerText || document.body.innerText.slice(0, 3000);
+      const text = document.body.innerText.slice(0, 6000);
       const res = await fetch("/api/ai/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -585,10 +585,7 @@
       });
       const data = await res.json();
       if (data.text) {
-        const hero = document.querySelector(".hero");
-        if (hero) {
-          hero.querySelector("h1").innerText = data.text;
-        }
+        document.body.innerText = data.text;
         document.getElementById("trans-msg").textContent = "Translated via AI.";
       } else {
         document.getElementById("trans-msg").textContent = "Translation unavailable.";
