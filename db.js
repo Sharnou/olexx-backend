@@ -4,6 +4,12 @@ const memoryPath = path.join(__dirname, "olexx-db-fallback.json");
 
 let db = null;
 let useMemory = false;
+let BetterSqlite3 = null;
+try {
+  BetterSqlite3 = require("better-sqlite3");
+} catch {
+  useMemory = true; // fall back when module is not present (e.g., slim builds)
+}
 let memory = {
   listings: [],
   profiles: {},
@@ -14,16 +20,13 @@ let memory = {
 };
 
 function tryInitSqlite() {
-  let Database;
-  try {
-    Database = require("better-sqlite3");
-  } catch (err) {
+  if (!BetterSqlite3) {
     useMemory = true;
     return;
   }
 
   try {
-    db = new Database(dbPath);
+    db = new BetterSqlite3(dbPath);
     db.pragma("journal_mode = WAL");
     db.exec(`
       CREATE TABLE IF NOT EXISTS listings (
