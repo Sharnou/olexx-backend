@@ -42,7 +42,7 @@
     <nav>
       <a href="#browse">Browse</a>
       <a href="#sell">Sell</a>
-      <a href="#admin">Admin</a>
+      <a href="#admin" id="admin-link" style="display:none;">Admin</a>
       <a href="#auth" id="auth-link" style="font-weight:700;">Login / Register</a>
       <span id="user-indicator" class="muted" style="margin-left:12px;"></span>
       <button class="btn btn-secondary" id="logout-btn" style="display:none;" onclick="logout()">Logout</button>
@@ -215,7 +215,7 @@
       <pre id="sell-out" style="margin-top:10px;"></pre>
     </section>
 
-    <section id="admin" class="two-col" style="margin-top:24px;">
+    <section id="admin" class="two-col" style="margin-top:24px; display:none;">
       <div class="card">
         <div class="section-title">Admin actions</div>
         <label>Seller ID</label>
@@ -272,7 +272,7 @@
     // simple auth anchors
     document.getElementById("auth-link").addEventListener("click", (e) => {
       e.preventDefault();
-      alert("Auth UI not yet implemented. Integrate your auth provider here.");
+      document.getElementById("auth").scrollIntoView({ behavior: "smooth" });
     });
 
     const searchState = { page: 1 };
@@ -563,8 +563,10 @@
       const data = await res.json();
       if (data.token) {
         localStorage.setItem("olexxToken", data.token);
+        if (data.user) localStorage.setItem("olexxUser", JSON.stringify(data.user));
         document.getElementById("auth-status").textContent = `Logged in as ${data.user?.id || ""}`;
         renderUserIndicator(data.user);
+        updateAdminVisibility();
       } else {
         document.getElementById("auth-status").textContent = data.error || "Verify failed";
       }
@@ -575,6 +577,21 @@
       const t = authToken();
       if (t) return Object.assign({}, base, { Authorization: `Bearer ${t}` });
       return base;
+    }
+
+    async function updateAdminVisibility() {
+      const section = document.getElementById("admin");
+      const link = document.getElementById("admin-link");
+      try {
+        const res = await fetch("/api/admin/me", { headers: authHeaders() });
+        const data = await res.json();
+        const show = !!data.isAdmin;
+        if (section) section.style.display = show ? "grid" : "none";
+        if (link) link.style.display = show ? "inline" : "none";
+      } catch {
+        if (section) section.style.display = "none";
+        if (link) link.style.display = "none";
+      }
     }
 
     function renderUserIndicator(user) {
@@ -595,7 +612,9 @@
 
     function logout() {
       localStorage.removeItem("olexxToken");
+      localStorage.removeItem("olexxUser");
       renderUserIndicator(null);
+      updateAdminVisibility();
     }
 
     // on load, try /api/auth/me to show user
@@ -605,9 +624,14 @@
       const res = await fetch("/api/auth/me", { headers: authHeaders() });
       if (res.ok) {
         const data = await res.json();
-        renderUserIndicator(data.user);
+        if (data.user) {
+          localStorage.setItem("olexxUser", JSON.stringify(data.user));
+          renderUserIndicator(data.user);
+          updateAdminVisibility();
+        }
       }
     })();
+    updateAdminVisibility();
 
     const siteLang = document.documentElement.lang || "en";
     const userLang = (navigator.language || "en").split("-")[0];
