@@ -3,7 +3,7 @@ const url = require("url");
 const { runAiClassifier } = require("./classifier");
 const { TAXONOMY } = require("./taxonomy");
 const { visibilityFromRating } = require("./ranking");
-const { SUPER_ADMIN_EMAIL, DEV_MODE, USE_ES, USE_RABBIT, S3_UPLOAD_BASE, S3_CDN_BASE, USE_AWS_PRESIGN, AWS_REGION, S3_BUCKET, ADMIN_EMAILS } = require("./config");
+const { SUPER_ADMIN_EMAIL, DEV_MODE, USE_ES, USE_RABBIT, S3_UPLOAD_BASE, S3_CDN_BASE, USE_AWS_PRESIGN, AWS_REGION, S3_BUCKET, ADMIN_EMAILS, AUTO_AI_ENABLE } = require("./config");
 const SearchAdapter = USE_ES ? require("./elasticsearch") : require("./search");
 const InMemory = require("./search");
 const Profiles = require("./profiles");
@@ -20,6 +20,8 @@ const Notes = require("./notifications");
 const AI = require("./ai");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const ModerationQueue = require("./moderation-queue");
+const AutoAI = require("./auto-ai");
+const DB = require("./db");
 
 function json(res, code, data) {
   const body = JSON.stringify(data);
@@ -614,6 +616,21 @@ const server = http.createServer(async (req, res) => {
     const ok = ModerationQueue.resolve(body.id, body.status || "resolved");
     return json(res, ok ? 200 : 404, ok ? { ok } : { error: "not_found" });
   }
+  if (method === "POST" && parsed.pathname === "/api/ai/auto-upgrade") {
+    if (!AUTO_AI_ENABLE && !isAdmin(req)) return json(res, 403, { error: "forbidden" });
+    try {
+      const base = req.headers["x-external-base"] || "http://localhost:3000";
+      const out = await AutoAI.runAutoUpgrade(base);
+      return json(res, 200, out);
+    } catch (e) {
+      return json(res, 500, { error: e.message || "auto_upgrade_failed" });
+    }
+  }
+  if (method === "GET" && parsed.pathname === "/api/ai/auto-upgrade/runs") {
+    if (!AUTO_AI_ENABLE && !isAdmin(req)) return json(res, 403, { error: "forbidden" });
+    const limit = parsed.query.limit ? Number(parsed.query.limit) : 20;
+    return json(res, 200, { items: DB.listAutoAiRuns(limit) });
+  }
   if (method === "POST" && parsed.pathname === "/api/chat/send") {
     try {
       const body = await parseBody(req);
@@ -699,16 +716,6 @@ const server = http.createServer(async (req, res) => {
       return json(res, 400, { error: e.message || "bad request" });
     }
   }
-  if (method === "POST" && parsed.pathname === "/api/ai/translate") {
-    try {
-      const body = await parseBody(req);
-      const out = await AI.translateText(String(body.text || ""), String(body.to || "en"));
-      if (!out.ok) return json(res, 400, { error: out.error || "translation_failed" });
-      return json(res, 200, { text: out.text });
-    } catch (e) {
-      return json(res, 400, { error: e.message || "bad request" });
-    }
-  }
   if (method === "POST" && parsed.pathname === "/api/auth/request-otp") {
     try {
       const body = await parseBody(req);
@@ -766,6 +773,18 @@ const server = http.createServer(async (req, res) => {
   }
   json(res, 404, { error: "Not found" });
 });
+
+// housekeeping: purge expired listings and old chat daily
+try {
+  if (SearchAdapter.purgeExpired) {
+    SearchAdapter.purgeExpired();
+    setInterval(() => SearchAdapter.purgeExpired(), 12 * 60 * 60 * 1000);
+  }
+  if (DB.purgeOldChat) {
+    DB.purgeOldChat(30);
+    setInterval(() => DB.purgeOldChat(30), 12 * 60 * 60 * 1000);
+  }
+} catch {}
 
 if (require.main === module) {
   const port = process.env.PORT ? Number(process.env.PORT) : 3000;

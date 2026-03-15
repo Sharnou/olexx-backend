@@ -1,13 +1,9 @@
-const fs = require("fs");
-const path = require("path");
 const Profiles = require("./profiles");
 const Notifications = require("./notifications");
 const Whatsapp = require("./whatsapp");
 const Moderation = require("./moderation");
 const ModerationQueue = require("./moderation-queue");
-const file = path.join(__dirname, "data-chat.json");
-
-let messages = [];
+const DB = require("./db");
 
 function canSend(senderId) {
   const p = Profiles.getProfile(senderId);
@@ -57,8 +53,17 @@ function send({ from, to, text, channel = "text", whatsapp, audioUrl }) {
     audioUrl: audioUrl || null,
     at: new Date().toISOString(),
   };
-  messages.push(msg);
-  persist();
+  DB.saveChat({
+    id: msg.id,
+    sender: msg.from,
+    recipient: msg.to,
+    text: msg.text,
+    channel: msg.channel,
+    whatsapp: msg.fromWhatsapp,
+    audioUrl: msg.audioUrl,
+    at: msg.at,
+    country: profileCountry(recipient) || profileCountry(sender) || null,
+  });
   notifyRecipient(recipient, msg);
   return msg;
 }
@@ -84,39 +89,13 @@ function notifyRecipient(recipientId, msg) {
 function thread({ userA, userB, limit = 50 }) {
   const a = String(userA || "");
   const b = String(userB || "");
-  const arr = messages.filter((m) => (m.from === a && m.to === b) || (m.from === b && m.to === a));
-  const slice = arr.slice(-Math.min(500, limit));
-  return slice;
+  return DB.listChat(a, b, Math.min(500, limit));
 }
 
-function persist() {
-  try {
-    fs.writeFileSync(file, JSON.stringify(messages));
-    return true;
-  } catch {
-    return false;
-  }
+function profileCountry(userId) {
+  if (!userId) return null;
+  const p = Profiles.getProfile(userId);
+  return p?.country || null;
 }
-
-function load() {
-  try {
-    if (fs.existsSync(file)) {
-      const raw = fs.readFileSync(file, "utf8");
-      messages = JSON.parse(raw) || [];
-    }
-  } catch {
-    messages = [];
-  }
-}
-
-process.on("SIGINT", () => {
-  persist();
-  process.exit(0);
-});
-process.on("beforeExit", () => {
-  persist();
-});
-
-load();
 
 module.exports = { send, thread };

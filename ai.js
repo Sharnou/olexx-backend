@@ -93,7 +93,8 @@ async function suggestFromMedia({ title, description, imageBase64 }) {
 }
 
 async function translateText(text, targetLang) {
-  if (!AI_API_KEY) return { ok: false, reason: "not_configured" };
+  // If no key, just echo input to avoid breaking UX
+  if (!AI_API_KEY) return { ok: true, text };
   const prompt = `Translate the following content to ${targetLang}. Keep numbers and proper nouns.`;
   const body = {
     model: AI_MODEL,
@@ -139,4 +140,12 @@ async function translateText(text, targetLang) {
   });
 }
 
-module.exports = { suggestFromMedia, translateText };
+async function safeTranslate(text, targetLang) {
+  const out = await translateText(text, targetLang);
+  if (!out.ok) {
+    return { ok: true, text }; // fallback to original text on any failure
+  }
+  return out;
+}
+
+module.exports = { suggestFromMedia, translateText: safeTranslate };

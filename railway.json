@@ -1,0 +1,17 @@
+{
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "startCommand": "node server.js",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 100,
+    "restartPolicyType": "ON_FAILURE"
+  },
+  "env": {
+    "PORT": "8080",
+    "SUPER_ADMIN_EMAIL": "Ahmed_sharnou@yahoo.com",
+    "OLEXX_DB_PATH": "/app/olexx.db",
+    "AUTO_AI_ENABLE": "true"
+  }
+}

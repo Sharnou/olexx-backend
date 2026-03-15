@@ -1,0 +1,36 @@
+# fly.toml generated for OLEXX backend
+
+app = "olexx-backend"
+primary_region = "ams"
+
+[build]
+  builder = "heroku/buildpacks:20"
+
+[env]
+  PORT = "8080"
+  SUPER_ADMIN_EMAIL = "Ahmed_sharnou@yahoo.com"
+  AUTO_AI_ENABLE = "true"
+  OLEXX_DB_PATH = "/data/olexx.db"
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8080
+  processes = ["app"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+[[mounts]]
+  source = "data"
+  destination = "/data"
+  processes = ["app"]

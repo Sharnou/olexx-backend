@@ -3,6 +3,8 @@ const { TAXONOMY } = require("./taxonomy");
 const fs = require("fs");
 const path = require("path");
 const DB = require("./db");
+const MS_30D = 30 * 24 * 60 * 60 * 1000;
+const MS_7D = 7 * 24 * 60 * 60 * 1000;
 
 const store = new Map();
 const index = new Map();
@@ -230,6 +232,9 @@ function indexDoc(doc) {
   }
   const tokens = docTokens(doc);
   const createdAt = doc.createdAt ? Number(new Date(doc.createdAt).getTime()) : Date.now();
+  const age = Date.now() - createdAt;
+  const expired = age >= MS_30D;
+  const allowReshare = expired && age < MS_30D + MS_7D;
   const normalized = {
     id,
     title: doc.title || "",
@@ -244,6 +249,8 @@ function indexDoc(doc) {
     createdAt,
     price: doc.price !== undefined ? Number(doc.price) : undefined,
     _tokens: tokens,
+    expired,
+    allowReshare,
   };
   store.set(id, normalized);
   addToIndex(id, tokens);
@@ -373,6 +380,12 @@ function search(body) {
   for (const id of candidates) {
     const doc = store.get(id);
     if (!doc) continue;
+    const age = startTime - doc.createdAt;
+    if (age >= MS_30D + MS_7D) {
+      deleteDoc(id);
+      continue;
+    }
+    if (age >= MS_30D) continue; // expired but within reshare window: hide from search
     if (qTokens.length > 0 && (!doc._tokens || doc._tokens.length === 0)) continue;
     let score = 0;
     for (const tk of qTokens) {
@@ -469,6 +482,7 @@ function load() {
     const docs = JSON.parse(raw);
     clear();
     indexBulk(docs);
+    purgeExpired();
     return true;
   } catch {
     return false;
@@ -477,7 +491,9 @@ function load() {
 
 function listDocs() {
   const out = [];
+  const now = Date.now();
   for (const [, doc] of store) {
+    if (now - doc.createdAt >= MS_30D + MS_7D) continue;
     const { _tokens, ...plain } = doc;
     out.push(plain);
   }
@@ -528,8 +544,30 @@ function deleteDoc(id) {
   return true;
 }
 
+function purgeExpired() {
+  const now = Date.now();
+  let changed = false;
+  for (const d of Array.from(store.values())) {
+    const age = now - d.createdAt;
+    d.expired = age >= MS_30D;
+    d.allowReshare = d.expired && age < MS_30D + MS_7D;
+    if (age >= MS_30D + MS_7D) {
+      deleteDoc(d.id);
+      changed = true;
+    }
+  }
+  if (changed) persist();
+}
+
 function getDoc(id) {
-  return store.get(String(id)) || null;
+  const d = store.get(String(id));
+  if (!d) return null;
+  const age = Date.now() - d.createdAt;
+  if (age >= MS_30D + MS_7D) {
+    deleteDoc(id);
+    return null;
+  }
+  return d;
 }
 
 function listBySeller(sellerId, page, pageSize) {
@@ -545,4 +583,4 @@ function listBySeller(sellerId, page, pageSize) {
   return { total: arr.length, page: p, pageSize: ps, items: arr.slice(start, start + ps) };
 }
 
-module.exports = { indexDoc, indexBulk, search, suggest, clear, persist, load, listDocs, updateSellerStats, deleteDoc, getDoc, listBySeller };
+module.exports = { indexDoc, indexBulk, search, suggest, clear, persist, load, listDocs, updateSellerStats, deleteDoc, getDoc, listBySeller, purgeExpired };

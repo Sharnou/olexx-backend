@@ -1,0 +1,6 @@
+run = "npm install && PORT=4000 node server.js"
+language = "nodejs"
+entrypoint = "server.js"
+
+[env]
+SUPER_ADMIN_EMAIL = "Ahmed_sharnou@yahoo.com"
