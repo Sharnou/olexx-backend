@@ -15,6 +15,8 @@ const WHATSAPP_NUMBER_ID = process.env.WHATSAPP_NUMBER_ID || null; // WhatsApp B
 const AI_API_KEY = process.env.AI_API_KEY || null; // OpenAI-compatible key
 const AI_API_URL = process.env.AI_API_URL || "https://api.openai.com/v1/chat/completions";
 const AI_MODEL = process.env.AI_MODEL || "gpt-4o-mini";
+const AI_SEARCH_FETCH_URL = process.env.AI_SEARCH_FETCH_URL || "https://api.tavily.com/search";
+const AI_SEARCH_FETCH_KEY = process.env.AI_SEARCH_FETCH_KEY || null;
 const AUTO_AI_ENABLE = process.env.AUTO_AI_ENABLE === "true";
 const AUTO_AI_URL = process.env.AUTO_AI_URL || AI_API_URL;
 const AUTO_AI_KEY = process.env.AUTO_AI_KEY || AI_API_KEY;

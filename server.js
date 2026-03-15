@@ -23,6 +23,7 @@ const ModerationQueue = require("./moderation-queue");
 const AutoAI = require("./auto-ai");
 const AutoRefresh = require("./auto-refresh");
 const DB = require("./db");
+const { fetchAiEngines } = require("./ai-fetch");
 
 function json(res, code, data) {
   const body = JSON.stringify(data);
@@ -794,6 +795,8 @@ try {
   AutoRefresh.scheduleAiListRefresh({
     canRun: () => activeRequests < 2, // only when server is relatively idle
     intervalMs: 10 * 60 * 1000,
+    fetchFn: fetchAiEngines,
+    logFn: DB.saveJobRun,
   });
 } catch {}
 

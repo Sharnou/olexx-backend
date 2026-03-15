@@ -47,6 +47,7 @@ Lightweight classifieds backend with in-memory search, optional Elasticsearch/Ra
 - `USE_AWS_PRESIGN`, `AWS_REGION`, `S3_BUCKET`, `S3_UPLOAD_BASE`, `S3_CDN_BASE`
 - `WHATSAPP_TOKEN`, `WHATSAPP_NUMBER_ID` (for WhatsApp Business API send)
 - `AI_API_KEY`, `AI_API_URL`, `AI_MODEL` (vision/LLM suggestions)
+- `AI_SEARCH_FETCH_URL`, `AI_SEARCH_FETCH_KEY` (optional: fetch new AI search engines list)
 - `OTP_EMAIL_FROM`, `SENDGRID_API_KEY` (email OTP)
 - `TWILIO_SID`, `TWILIO_TOKEN`, `TWILIO_FROM` (SMS OTP)
 - `AUTO_AI_ENABLE`, `AUTO_AI_KEY`, `AUTO_AI_URL` (auto theme/banner/sitemap)
