@@ -5,11 +5,6 @@ const memoryPath = path.join(__dirname, "olexx-db-fallback.json");
 let db = null;
 let useMemory = false;
 let BetterSqlite3 = null;
-try {
-  BetterSqlite3 = require("better-sqlite3");
-} catch {
-  // stay in memory mode
-}
 let memory = {
   listings: [],
   profiles: {},
@@ -20,8 +15,11 @@ let memory = {
 };
 
 function tryInitSqlite() {
-  if (!BetterSqlite3) {
+  try {
+    BetterSqlite3 = require("better-sqlite3");
+  } catch (err) {
     useMemory = true;
+    console.warn("[DB] better-sqlite3 missing or failed to load; using memory/JSON fallback");
     return;
   }
 
