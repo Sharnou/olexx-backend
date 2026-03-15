@@ -21,6 +21,7 @@ const AI = require("./ai");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const ModerationQueue = require("./moderation-queue");
 const AutoAI = require("./auto-ai");
+const AutoRefresh = require("./auto-refresh");
 const DB = require("./db");
 
 function json(res, code, data) {
@@ -94,7 +95,12 @@ function requireUser(req) {
   return u;
 }
 
+let activeRequests = 0;
+
 const server = http.createServer(async (req, res) => {
+  activeRequests++;
+  res.on("finish", () => (activeRequests = Math.max(0, activeRequests - 1)));
+  res.on("close", () => (activeRequests = Math.max(0, activeRequests - 1)));
   const parsed = url.parse(req.url, true);
   const method = req.method || "GET";
   if (method === "GET" && parsed.pathname === "/health") {
@@ -784,6 +790,11 @@ try {
     DB.purgeOldChat(30);
     setInterval(() => DB.purgeOldChat(30), 12 * 60 * 60 * 1000);
   }
+  // AI search-engine list auto refresh with backpressure
+  AutoRefresh.scheduleAiListRefresh({
+    canRun: () => activeRequests < 2, // only when server is relatively idle
+    intervalMs: 10 * 60 * 1000,
+  });
 } catch {}
 
 if (require.main === module) {
