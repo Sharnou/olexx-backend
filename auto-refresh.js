@@ -14,6 +14,8 @@ function scheduleAiListRefresh(opts) {
     stateFile = path.join(__dirname, "ai-search-state.json"),
     intervalMs = 10 * 60 * 1000, // 10 minutes
     canRun = () => true,
+    fetchFn = null, // async () => string[] of new engines
+    logFn = null, // (run) => void
   } = opts || {};
 
   let timer = null;
@@ -42,15 +44,63 @@ function scheduleAiListRefresh(opts) {
     running = true;
     const state = loadState();
     try {
-      // Placeholder refresh: in a real refresh, fetch new engines and append.
-      // We avoid duplication by advancing cursor; here we simply record a heartbeat.
-      const stamp = `\n# refresh heartbeat ${new Date().toISOString()}\n`;
-      fs.appendFileSync(targetFile, stamp);
+      let added = 0;
+      if (fetchFn) {
+        const current = new Set();
+        try {
+          const raw = fs.readFileSync(targetFile, "utf8");
+          raw
+            .split(/\r?\n/)
+            .map((l) => l.trim())
+            .filter(Boolean)
+            .forEach((l) => current.add(l.toLowerCase()));
+        } catch {}
+        const fetched = await fetchFn();
+        if (Array.isArray(fetched)) {
+          const unique = [];
+          for (const item of fetched) {
+            const key = String(item || "").toLowerCase().trim();
+            if (!key) continue;
+            if (current.has(key)) continue;
+            current.add(key);
+            unique.push(item);
+          }
+          if (unique.length) {
+            fs.appendFileSync(targetFile, "\n" + unique.join("\n") + "\n");
+            added = unique.length;
+          }
+        }
+      } else {
+        // heartbeat fallback
+        const stamp = `\n# refresh heartbeat ${new Date().toISOString()}\n`;
+        fs.appendFileSync(targetFile, stamp);
+        added = 0;
+      }
       state.cursor += 1;
       state.lastRun = new Date().toISOString();
       saveState(state);
+      if (logFn) {
+        logFn({
+          id: `refresh_${state.cursor}_${Date.now()}`,
+          type: "ai_search_refresh",
+          status: "ok",
+          summary: `refresh step ${state.cursor}, added ${added}`,
+          detail: JSON.stringify({ added }),
+          createdAt: state.lastRun,
+        });
+      }
     } catch (e) {
       // On error, keep state; will retry next interval.
+      if (logFn) {
+        logFn({
+          id: `refresh_err_${Date.now()}`,
+          type: "ai_search_refresh",
+          status: "error",
+          summary: e.message || "refresh_failed",
+          detail: "",
+          createdAt: new Date().toISOString(),
+        });
+      }
     } finally {
       running = false;
     }

@@ -10,6 +10,7 @@ let memory = {
   chat_messages: [],
   moderation_queue: [],
   auto_ai_runs: [],
+  auto_jobs: [],
 };
 
 function tryInitSqlite() {
@@ -80,6 +81,14 @@ function tryInitSqlite() {
         detail TEXT,
         createdAt TEXT
       );
+      CREATE TABLE IF NOT EXISTS auto_jobs (
+        id TEXT PRIMARY KEY,
+        type TEXT,
+        status TEXT,
+        summary TEXT,
+        detail TEXT,
+        createdAt TEXT
+      );
     `);
   } catch (err) {
     useMemory = true;
@@ -93,7 +102,7 @@ function loadMemory() {
       memory = JSON.parse(require("fs").readFileSync(memoryPath, "utf8"));
     }
   } catch {
-    memory = { listings: [], profiles: {}, chat_messages: [], moderation_queue: [], auto_ai_runs: [] };
+    memory = { listings: [], profiles: {}, chat_messages: [], moderation_queue: [], auto_ai_runs: [], auto_jobs: [] };
   }
 }
 
@@ -252,4 +261,32 @@ function listAutoAiRuns(limit = 20) {
   return db.prepare("SELECT * FROM auto_ai_runs ORDER BY createdAt DESC LIMIT ?").all(limit);
 }
 
-module.exports = { db, upsertProfile, getProfile, saveListing, loadListings, saveChat, listChat, purgeOldChat, saveAutoAiRun, listAutoAiRuns };
+function saveJobRun(run) {
+  const row = {
+    id: run.id,
+    type: run.type || "auto",
+    status: run.status || "ok",
+    summary: run.summary || "",
+    detail: run.detail || "",
+    createdAt: run.createdAt || new Date().toISOString(),
+  };
+  if (useMemory) {
+    if (!memory.auto_jobs) memory.auto_jobs = [];
+    memory.auto_jobs.push(row);
+    saveMemory();
+    return row;
+  }
+  db.prepare(`INSERT INTO auto_jobs (id,type,status,summary,detail,createdAt) VALUES (@id,@type,@status,@summary,@detail,@createdAt)`).run(row);
+  return row;
+}
+
+function listJobRuns(type = null, limit = 20) {
+  if (useMemory) {
+    const arr = (memory.auto_jobs || []).filter((r) => !type || r.type === type);
+    return arr.slice(-limit).reverse();
+  }
+  if (type) return db.prepare("SELECT * FROM auto_jobs WHERE type=? ORDER BY createdAt DESC LIMIT ?").all(type, limit);
+  return db.prepare("SELECT * FROM auto_jobs ORDER BY createdAt DESC LIMIT ?").all(limit);
+}
+
+module.exports = { db, upsertProfile, getProfile, saveListing, loadListings, saveChat, listChat, purgeOldChat, saveAutoAiRun, listAutoAiRuns, saveJobRun, listJobRuns };
