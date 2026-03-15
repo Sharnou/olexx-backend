@@ -733,6 +733,40 @@ const server = http.createServer(async (req, res) => {
       return json(res, 400, { error: e.message || "bad request" });
     }
   }
+  if (method === "POST" && parsed.pathname === "/api/seed/dev") {
+    if (!DEV_MODE) return json(res, 403, { error: "forbidden" });
+    const body = await parseBody(req);
+    const clear = body && body.clear === true;
+    if (clear && SearchAdapter.clear) {
+      await SearchAdapter.clear();
+    }
+    const base = Date.now();
+    const seedSeller = { id: "seed-seller", rating: 4.8, reviews: 42 };
+    const docs = [
+      { title: "iPhone 14 Pro 256GB Space Black", description: "Perfect condition, bought 6 months ago. Comes with original box, charger and accessories. No scratches.", price: 18500, city: "Cairo", category: { l1: "Electronics", l2: "Mobile Phones" } },
+      { title: "Toyota Camry 2020 – 45,000 km", description: "Well maintained, single owner. Full service history. Accident free. GCC specs. Titanium color.", price: 320000, city: "Alexandria", category: { l1: "Vehicles", l2: "Cars for Sale" } },
+      { title: "2BR Apartment Maadi Cairo for Sale", description: "Spacious 2-bedroom apartment in Maadi, close to metro. Fully finished, 120m², great view. Negotiable.", price: 2500000, city: "Cairo", category: { l1: "Properties", l2: "Apartments for Sale" } },
+      { title: "MacBook Pro M3 14-inch 2023", description: "Like new condition. 16GB RAM, 512GB SSD. AppleCare+ until 2026. Original Arabic/English keyboard.", price: 45000, city: "Cairo", category: { l1: "Electronics", l2: "Laptops" } },
+      { title: "IKEA 3-Seater Sofa Beige", description: "Excellent condition, barely used. Moving abroad, must sell. Dimensions 210x90cm. Can deliver within Cairo.", price: 3500, city: "Giza", category: { l1: "Home & Garden", l2: "Furniture" } },
+      { title: "Samsung Galaxy S24 Ultra 512GB", description: "Brand new sealed box. Egyptian warranty 1 year. Titanium Black color. All accessories included.", price: 28000, city: "Cairo", category: { l1: "Electronics", l2: "Mobile Phones" } },
+      { title: "Honda Civic 2019 Automatic 1.5T", description: "Original paint, no accidents. Recently serviced. Sunroof, leather seats. Price slightly negotiable.", price: 195000, city: "Cairo", category: { l1: "Vehicles", l2: "Cars for Sale" } },
+      { title: "Dell XPS 15 Core i7 4K OLED", description: "16GB RAM, 512GB NVMe SSD. 4K OLED display. Used 1 year, excellent condition. All drivers updated.", price: 35000, city: "Alexandria", category: { l1: "Electronics", l2: "Laptops" } },
+      { title: "Studio Apartment Zamalek – For Rent", description: "Stunning studio on high floor with Nile views. Fully furnished, air-conditioned. Available immediately.", price: 12000, city: "Cairo", category: { l1: "Properties", l2: "Apartments for Rent" } },
+      { title: "PlayStation 5 Console + 2 Controllers", description: "Used 6 months. Perfect working condition. Includes 3 games: FIFA, God of War, Spider-Man. All cables included.", price: 14500, city: "Cairo", category: { l1: "Electronics", l2: "Gaming" } },
+    ];
+    const ids = [];
+    for (let i = 0; i < docs.length; i++) {
+      const doc = Object.assign({}, docs[i], {
+        id: `seed_${base}_${i}`,
+        country: "Egypt",
+        seller: seedSeller,
+        images: [],
+      });
+      const id = await SearchAdapter.indexDoc(doc);
+      ids.push(id);
+    }
+    return json(res, 200, { seeded: ids.length, ids });
+  }
   if (method === "POST" && parsed.pathname === "/api/auth/verify-otp") {
     try {
       const body = await parseBody(req);
