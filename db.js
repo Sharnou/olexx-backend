@@ -8,7 +8,7 @@ let BetterSqlite3 = null;
 try {
   BetterSqlite3 = require("better-sqlite3");
 } catch {
-  useMemory = true; // fall back when module is not present (e.g., slim builds)
+  // stay in memory mode
 }
 let memory = {
   listings: [],
