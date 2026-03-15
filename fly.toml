@@ -1,6 +1,5 @@
-# fly.toml generated for OLEXX backend
-
-app = "olexx-backend"
+# fly.toml for OLEXX backend
+app = "olexx-backend-ams"
 primary_region = "ams"
 
 [build]
