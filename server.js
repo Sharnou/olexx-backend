@@ -62,6 +62,63 @@ function parseBody(req) {
   });
 }
 
+function buildSitemapXml(base, docs = []) {
+  const urls = new Map(); // loc -> lastmod
+  const now = new Date().toISOString();
+  const add = (loc, lastmod = now) => {
+    if (!loc) return;
+    urls.set(loc, lastmod);
+  };
+
+  const staticPages = ["/", "/index.html", "/admin.html", "/auth", "/public/index.html"];
+  staticPages.forEach((p) => add(p));
+
+  const popular = ["/popular/electronics", "/popular/cars", "/popular/properties"];
+  popular.forEach((p) => add(p));
+
+  const electronicsSubs = [
+    "computers/laptops",
+    "computers/desktops",
+    "computers/accessories",
+    "tv-audio/video",
+    "gaming/consoles",
+    "gaming/games-accessories",
+    "cameras/imaging",
+    "home-appliances/large",
+    "home-appliances/climate",
+    "home-appliances/kitchen",
+  ];
+  electronicsSubs.forEach((p) => add(`/category/Electronics/${p}`));
+
+  for (const group of TAXONOMY) {
+    add(`/category/${encodeURIComponent(group.l1)}`);
+    for (const cat of group.categories) {
+      add(`/category/${encodeURIComponent(group.l1)}/${encodeURIComponent(cat.l2)}`);
+    }
+  }
+
+  const citySet = new Set();
+  const districtSet = new Set();
+  for (const d of docs || []) {
+    if (d.city) citySet.add(d.city);
+    if (d.location && d.location.district) districtSet.add(`${d.city || "city"}/${d.location.district}`);
+    add(`/listing/${encodeURIComponent(d.id)}`, d.createdAt ? new Date(d.createdAt).toISOString() : now);
+  }
+  for (const c of citySet) add(`/city/${encodeURIComponent(c)}`);
+  for (const cd of districtSet) add(`/city/${encodeURIComponent(cd)}`);
+
+  const popularSearches = ["iphone", "corolla", "ps5", "lenovo laptop", "smart tv"];
+  popularSearches.forEach((q) => add(`/search?q=${encodeURIComponent(q)}`));
+
+  const xml =
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+    Array.from(urls.entries())
+      .map(([loc, lastmod]) => `  <url><loc>${base}${loc}</loc><lastmod>${lastmod}</lastmod></url>`)
+      .join("\n") +
+    "\n</urlset>";
+  return xml;
+}
+
 function isAdmin(req) {
   const superE = String(SUPER_ADMIN_EMAIL || "").toLowerCase().trim();
   const user = getUserFromAuth(req);
@@ -417,63 +474,29 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { suggestions: SearchAdapter.suggest(q) });
   }
   if (method === "GET" && parsed.pathname === "/sitemap.xml") {
-    const docs = InMemory.listDocs ? InMemory.listDocs() : [];
-    const urls = [];
-    const now = new Date().toISOString();
-    urls.push({ loc: "/", lastmod: now });
-    urls.push({ loc: "/admin.html", lastmod: now });
-    const popular = ["/popular/electronics", "/popular/cars", "/popular/properties"];
-    popular.forEach((p) => urls.push({ loc: p, lastmod: now }));
-    // electronics deep subcategories
-    const electronicsSubs = [
-      "computers/laptops",
-      "computers/desktops",
-      "computers/accessories",
-      "tv-audio/video",
-      "gaming/consoles",
-      "gaming/games-accessories",
-      "cameras/imaging",
-      "home-appliances/large",
-      "home-appliances/climate",
-      "home-appliances/kitchen",
-    ];
-    electronicsSubs.forEach((p) => urls.push({ loc: `/category/Electronics/${p}`, lastmod: now }));
-    for (const group of TAXONOMY) {
-      urls.push({ loc: `/category/${encodeURIComponent(group.l1)}`, lastmod: now });
-      for (const cat of group.categories) {
-        urls.push({ loc: `/category/${encodeURIComponent(group.l1)}/${encodeURIComponent(cat.l2)}`, lastmod: now });
-      }
-    }
-    // location layers (city/district) derived from listings
-    const citySet = new Set();
-    const districtSet = new Set();
-    for (const d of docs || []) {
-      if (d.city) citySet.add(d.city);
-      if (d.location && d.location.district) districtSet.add(`${d.city || "city"}/${d.location.district}`);
-      urls.push({
-        loc: `/listing/${encodeURIComponent(d.id)}`,
-        lastmod: d.createdAt ? new Date(d.createdAt).toISOString() : now,
-      });
-    }
-    for (const c of citySet) urls.push({ loc: `/city/${encodeURIComponent(c)}`, lastmod: now });
-    for (const cd of districtSet) urls.push({ loc: `/city/${encodeURIComponent(cd)}`, lastmod: now });
-    const popularSearches = ["iphone", "corolla", "ps5", "lenovo laptop", "smart tv"];
-    popularSearches.forEach((q) => urls.push({ loc: `/search?q=${encodeURIComponent(q)}`, lastmod: now }));
-    const base = req.headers["x-external-base"] || "http://localhost:3000";
-    const xml =
-      `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-      urls
-        .map((u) => `  <url><loc>${base}${u.loc}</loc><lastmod>${u.lastmod}</lastmod></url>`)
-        .join("\n") +
-      "\n</urlset>";
-    res.writeHead(200, { "Content-Type": "application/xml" });
-    return res.end(xml);
+  const docs = InMemory.listDocs ? InMemory.listDocs() : [];
+  const base = req.headers["x-external-base"] || "http://localhost:3000";
+  const xml = buildSitemapXml(base, docs);
+  res.writeHead(200, { "Content-Type": "application/xml" });
+  return res.end(xml);
   }
   if (method === "GET" && parsed.pathname === "/robots.txt") {
     const base = req.headers["x-external-base"] || "http://localhost:3000";
     const body = `User-agent: *\nAllow: /\nSitemap: ${base}/sitemap.xml\n`;
     res.writeHead(200, { "Content-Type": "text/plain" });
     return res.end(body);
+  }
+  if (method === "POST" && parsed.pathname === "/api/admin/sitemap/regenerate") {
+    if (!isAdmin(req)) return json(res, 403, { error: "forbidden" });
+    try {
+      const docs = InMemory.listDocs ? InMemory.listDocs() : [];
+      const base = req.headers["x-external-base"] || "http://localhost:3000";
+      const xml = buildSitemapXml(base, docs);
+      fs.writeFileSync(path.join(__dirname, "public", "sitemap.xml"), xml);
+      return json(res, 200, { ok: true, count: docs.length });
+    } catch (e) {
+      return json(res, 500, { error: "sitemap_regen_failed", detail: e.message });
+    }
   }
   if (method === "POST" && parsed.pathname === "/api/index/clear") {
     await SearchAdapter.clear();
