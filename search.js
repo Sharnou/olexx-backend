@@ -3,6 +3,7 @@ const { TAXONOMY } = require("./taxonomy");
 const fs = require("fs");
 const path = require("path");
 const DB = require("./db");
+const ModerationQueue = require("./moderation-queue");
 const MS_30D = 30 * 24 * 60 * 60 * 1000;
 const MS_7D = 7 * 24 * 60 * 60 * 1000;
 
@@ -24,6 +25,7 @@ const MAX_CACHE = 500;
 const CACHE_TTL_MS = 60_000;
 
 const dataFile = path.join(__dirname, "data-index.json");
+const signatureMap = new Map(); // signature -> array of listing ids
 
 const STOP = new Set([
   "a",
@@ -257,6 +259,7 @@ function indexDoc(doc) {
   addToAttrEqIndex(id, normalized.attributes);
   addToAttrNumIndex(id, normalized.attributes);
   addToCategoryIndex(id, normalized.category);
+  flagPotentialDuplicate(normalized);
   totalDocs = store.size;
   cache.clear();
   return id;
@@ -539,9 +542,33 @@ function deleteDoc(id) {
   removeFromAttrNumIndex(id, d.attributes || {});
   removeFromCategoryIndex(id, d.category || null);
   store.delete(String(id));
+  for (const [sig, arr] of signatureMap.entries()) {
+    const idx = arr.indexOf(id);
+    if (idx >= 0) {
+      arr.splice(idx, 1);
+      if (arr.length === 0) signatureMap.delete(sig);
+    }
+  }
   totalDocs = store.size;
   cache.clear();
   return true;
+}
+
+function flagPotentialDuplicate(doc) {
+  const sig = [
+    (doc.title || "").toLowerCase().slice(0, 80),
+    doc.price !== undefined ? String(doc.price) : "",
+    doc.seller && doc.seller.id ? String(doc.seller.id) : "",
+  ].join("|");
+  if (!sig.trim()) return;
+  const arr = signatureMap.get(sig) || [];
+  if (!arr.includes(doc.id)) arr.push(doc.id);
+  signatureMap.set(sig, arr);
+  if (arr.length >= 2) {
+    try {
+      ModerationQueue.add("duplicate_listing", { ids: arr.slice(-2), sig });
+    } catch {}
+  }
 }
 
 function purgeExpired() {
