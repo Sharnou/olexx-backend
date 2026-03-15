@@ -726,7 +726,7 @@ const server = http.createServer(async (req, res) => {
   if (method === "POST" && parsed.pathname === "/api/auth/request-otp") {
     try {
       const body = await parseBody(req);
-      const out = Auth.requestOtp(body);
+      const out = await Auth.requestOtp(body);
       // expose code only in dev
       return json(res, 200, { sent: true, devCode: DEV_MODE ? out.devCode : undefined });
     } catch (e) {

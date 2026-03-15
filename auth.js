@@ -46,7 +46,7 @@ function otpCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-function requestOtp(body) {
+async function requestOtp(body) {
   const method = String(body.method || "").toLowerCase().trim();
   const value = method === "email" ? String(body.email || "").trim().toLowerCase() : String(body.phone || "").trim();
   if (!value) throw new Error(`${method} required`);
@@ -54,7 +54,11 @@ function requestOtp(body) {
   const exp = Date.now() + 5 * 60 * 1000;
   otps.set(value, { code, exp });
   persist();
-  deliverOtp(method, value, code);
+  const delivered = await deliverOtp(method, value, code);
+  if (!delivered && !DEV_MODE) {
+    otps.delete(value);
+    throw new Error("otp_delivery_failed");
+  }
   return { sent: true, devCode: DEV_MODE ? code : undefined };
 }
 
@@ -167,52 +171,64 @@ function getUser(id) {
   return users.get(String(id)) || null;
 }
 
-function deliverOtp(method, value, code) {
-  // Stub delivery: in production integrate email/SMS provider
+async function deliverOtp(method, value, code) {
+  // dev/console path
   if (DEV_MODE || OTP_SMS_PROVIDER === "console") {
     console.log(`[OTP] ${method} ${value}: ${code}`);
+    return true;
   }
+  // Twilio SMS
   if (method === "phone" && TWILIO_SID && TWILIO_TOKEN && TWILIO_FROM) {
-    const payload = new URLSearchParams({
-      To: value,
-      From: TWILIO_FROM,
-      Body: `Your OLEXX OTP is ${code}`,
-    }).toString();
-    const opts = {
-      method: "POST",
-      headers: {
-        Authorization: "Basic " + Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString("base64"),
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Content-Length": Buffer.byteLength(payload),
-      },
-    };
-    const req = require("https").request(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`, opts, () => {});
-    req.on("error", () => {});
-    req.write(payload);
-    req.end();
-  }
-  if (method === "email" && SENDGRID_API_KEY && OTP_EMAIL_FROM) {
-    const body = JSON.stringify({
-      personalizations: [{ to: [{ email: value }] }],
-      from: { email: OTP_EMAIL_FROM },
-      subject: "Your OLEXX OTP",
-      content: [{ type: "text/plain", value: `Your OLEXX OTP is ${code}` }],
+    return await new Promise((resolve) => {
+      const payload = new URLSearchParams({
+        To: value,
+        From: TWILIO_FROM,
+        Body: `Your OLEXX OTP is ${code}`,
+      }).toString();
+      const opts = {
+        method: "POST",
+        headers: {
+          Authorization: "Basic " + Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString("base64"),
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Length": Buffer.byteLength(payload),
+        },
+      };
+      const req = require("https").request(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`, opts, (res) => {
+        resolve(res.statusCode >= 200 && res.statusCode < 300);
+      });
+      req.on("error", () => resolve(false));
+      req.write(payload);
+      req.end();
     });
-    const opts = {
-      method: "POST",
-      hostname: "api.sendgrid.com",
-      path: "/v3/mail/send",
-      headers: {
-        Authorization: `Bearer ${SENDGRID_API_KEY}`,
-        "Content-Type": "application/json",
-        "Content-Length": Buffer.byteLength(body),
-      },
-    };
-    const req = require("https").request(opts, () => {});
-    req.on("error", () => {});
-    req.write(body);
-    req.end();
   }
+  // SendGrid email
+  if (method === "email" && SENDGRID_API_KEY && OTP_EMAIL_FROM) {
+    return await new Promise((resolve) => {
+      const body = JSON.stringify({
+        personalizations: [{ to: [{ email: value }] }],
+        from: { email: OTP_EMAIL_FROM },
+        subject: "Your OLEXX OTP",
+        content: [{ type: "text/plain", value: `Your OLEXX OTP is ${code}` }],
+      });
+      const opts = {
+        method: "POST",
+        hostname: "api.sendgrid.com",
+        path: "/v3/mail/send",
+        headers: {
+          Authorization: `Bearer ${SENDGRID_API_KEY}`,
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(body),
+        },
+      };
+      const req = require("https").request(opts, (res) => {
+        resolve(res.statusCode >= 200 && res.statusCode < 300);
+      });
+      req.on("error", () => resolve(false));
+      req.write(body);
+      req.end();
+    });
+  }
+  return false;
 }
 
 load();
