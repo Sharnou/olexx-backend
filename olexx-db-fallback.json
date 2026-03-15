@@ -1,0 +1,71 @@
+{
+  "listings": [],
+  "profiles": {},
+  "chat_messages": [
+    {
+      "id": "1773518972704_9p4whs",
+      "sender": "cf7ad39b91bbae834deeb3b3",
+      "recipient": "seller1",
+      "text": "hi there",
+      "channel": "text",
+      "whatsapp": null,
+      "audioUrl": null,
+      "at": "2026-03-14T20:09:32.704Z",
+      "country": null
+    },
+    {
+      "id": "1773519072697_7o6fos",
+      "sender": "cf7ad39b91bbae834deeb3b3",
+      "recipient": "seller1",
+      "text": "hi there",
+      "channel": "text",
+      "whatsapp": null,
+      "audioUrl": null,
+      "at": "2026-03-14T20:11:12.697Z",
+      "country": null
+    },
+    {
+      "id": "1773519099031_dm522e",
+      "sender": "cf7ad39b91bbae834deeb3b3",
+      "recipient": "seller1",
+      "text": "hi there",
+      "channel": "text",
+      "whatsapp": null,
+      "audioUrl": null,
+      "at": "2026-03-14T20:11:39.031Z",
+      "country": null
+    },
+    {
+      "id": "1773519114719_4n8r5n",
+      "sender": "cf7ad39b91bbae834deeb3b3",
+      "recipient": "seller1",
+      "text": "hi there",
+      "channel": "text",
+      "whatsapp": null,
+      "audioUrl": null,
+      "at": "2026-03-14T20:11:54.719Z",
+      "country": null
+    },
+    {
+      "id": "1773519226658_8vt0d9",
+      "sender": "cf7ad39b91bbae834deeb3b3",
+      "recipient": "seller1",
+      "text": "hi there",
+      "channel": "text",
+      "whatsapp": null,
+      "audioUrl": null,
+      "at": "2026-03-14T20:13:46.658Z",
+      "country": null
+    }
+  ],
+  "moderation_queue": [],
+  "auto_ai_runs": [
+    {
+      "id": "1773521148310_0k7y",
+      "status": "ok",
+      "summary": "Sitemap regenerated; Banner fallback (AI unavailable)",
+      "detail": "{\"sitemapBytes\":3826,\"banner\":\"OLEXX — fresh update at 2026-03-14T20:45:48.313Z\"}",
+      "createdAt": "2026-03-14T20:45:48.316Z"
+    }
+  ]
+}

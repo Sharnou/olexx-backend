@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>http://localhost:3000/</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/admin.html</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/popular/electronics</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/popular/cars</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/popular/properties</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/category/Electronics/computers/laptops</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/category/Electronics/computers/desktops</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/category/Electronics/computers/accessories</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/category/Electronics/tv-audio/video</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/category/Electronics/gaming/consoles</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/category/Electronics/gaming/games-accessories</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/category/Electronics/cameras/imaging</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/category/Electronics/home-appliances/large</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/category/Electronics/home-appliances/climate</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/category/Electronics/home-appliances/kitchen</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/category/Vehicles</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/category/Vehicles/Cars%20for%20Sale</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/category/Properties</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/category/Properties/Apartments%20for%20Sale</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/category/Electronics</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/category/Electronics/Mobile%20Phones</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/category/Electronics/Laptops</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/category/Home%20%26%20Garden</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/category/Home%20%26%20Garden/Furniture</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/listing/1</loc><lastmod>2026-03-14T20:44:12.603Z</lastmod></url>
+  <url><loc>http://localhost:3000/listing/2</loc><lastmod>2026-03-14T20:44:12.604Z</lastmod></url>
+  <url><loc>http://localhost:3000/listing/3</loc><lastmod>2026-03-14T20:44:12.604Z</lastmod></url>
+  <url><loc>http://localhost:3000/search?q=iphone</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/search?q=corolla</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/search?q=ps5</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/search?q=lenovo%20laptop</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+  <url><loc>http://localhost:3000/search?q=smart%20tv</loc><lastmod>2026-03-14T20:45:48.311Z</lastmod></url>
+</urlset>
